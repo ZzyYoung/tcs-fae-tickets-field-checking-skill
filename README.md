@@ -25,6 +25,7 @@ This skill supports two practical workflows:
      - `Comment`
    - Skip tickets with no FAE tab
    - Return only the missing ticket keys and missing fields
+   - For large multi-page audits, prefer running the work in a separate sub-task/agent while the main session only reports progress and final results
 
 ## Preconditions
 

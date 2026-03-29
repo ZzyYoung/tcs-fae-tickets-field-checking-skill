@@ -21,6 +21,7 @@ This skill is for two related Jira workflows in Telechips TITAN:
 - "Check this reporter's tickets and tell me which ones are missing FAE fields."
 - "Use this JQL and inspect all pages. Only report tickets with empty FAE_Label, FAE Pattern, or Comment."
 - "Do not modify the tickets, just audit them."
+- "Create a separate task/agent to run the full audit and just report progress back to me."
 
 ### Edit mode examples
 
@@ -38,7 +39,9 @@ If the filter box is not editable in basic mode, click **Advanced** and enter th
 
 ### Audit mode
 
-- Edit only to inspect, then cancel.
+- For large multi-page audits, prefer running the inspection in a dedicated sub-task/sub-agent.
+- The main session should supervise, share progress, and present final results.
+- The worker task should edit only to inspect, then cancel.
 - Do not write or update content.
 - Skip tickets with no FAE tab.
 - Record ticket key + which fields are missing.
