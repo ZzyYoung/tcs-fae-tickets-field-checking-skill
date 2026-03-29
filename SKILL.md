@@ -29,12 +29,13 @@ Before doing anything, ensure all of the following are true:
 
 Use this when the JQL reporter is changed to another person and the user only wants an audit.
 
-For large audits across many tickets/pages, prefer creating an independent sub-task/sub-agent to run the inspection continuously, while the main session only tracks progress and reports results.
+For large audits across many tickets/pages, prefer creating an independent sub-task/sub-agent to run the inspection continuously, while the main session only tracks progress and reports results. For audit-only work, prefer a high-efficiency read-only method when available instead of slow human-like ticket-by-ticket visible clicking.
 
 If the task is check-only:
 
 - Open the filtered issue list.
 - For large multi-page audits, prefer spawning a dedicated sub-task/sub-agent.
+- When possible, use a high-efficiency authenticated audit method for read-only inspection instead of slow human-like browser clicking.
 - Inspect tickets page by page.
 - For each ticket:
   - Click **Edit**.
@@ -48,6 +49,7 @@ If the task is check-only:
   - Click **Cancel**.
 - Continue through pagination until all pages are checked.
 - If using a dedicated sub-task/sub-agent, let that worker perform the end-to-end audit while the main session only relays progress and final results.
+- After launching the sub-task/sub-agent, the main session should explicitly tell the user that the query/audit is in progress and that the final result will be reported back here when finished.
 - Return only the missing ticket keys and which fields are empty.
 
 当切换到别的 reporter、只想检查时：

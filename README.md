@@ -26,6 +26,8 @@ This skill supports two practical workflows:
    - Skip tickets with no FAE tab
    - Return only the missing ticket keys and missing fields
    - For large multi-page audits, prefer running the work in a separate sub-task/agent while the main session only reports progress and final results
+   - For read-only audits, prefer a high-efficiency inspection method instead of slow visible ticket-by-ticket clicking when possible
+   - After the sub-task starts, the main session should tell the user that the query is in progress and that the result will be returned here when finished
 
 ## Preconditions
 

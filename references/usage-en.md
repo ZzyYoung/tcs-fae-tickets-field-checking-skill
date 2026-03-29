@@ -40,9 +40,10 @@ If the filter box is not editable in basic mode, click **Advanced** and enter th
 ### Audit mode
 
 - For large multi-page audits, prefer running the inspection in a dedicated sub-task/sub-agent.
+- For read-only audits, prefer a high-efficiency authenticated inspection method when available instead of visible human-like clicking through every ticket.
 - The main session should supervise, share progress, and present final results.
-- The worker task should edit only to inspect, then cancel.
-- Do not write or update content.
+- Immediately after launching the worker, the main session should tell the user that the query is in progress and that the result will be sent back here when finished.
+- The worker task should inspect tickets without modifying data.
 - Skip tickets with no FAE tab.
 - Record ticket key + which fields are missing.
 
