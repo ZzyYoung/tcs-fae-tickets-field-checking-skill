@@ -69,7 +69,11 @@ Use this only when the user explicitly wants tickets updated.
 
 If the task is edit/update mode:
 
-- Open the filtered issue list.
+- Open the Jira issue search/list page.
+- Before starting, apply this JQL for the current user's own reported tickets:
+  `created >= 2025-01-01 AND created <= 2026-03-27 AND reporter in (currentUser()) order by created DESC`
+- If the filter area is not directly editable, click **Advanced** first, then paste/type the JQL directly.
+- Only after this filter is applied should bulk processing begin.
 - Work ticket by ticket.
 - Click **Edit**.
 - **Always click the FAE tab** before touching any FAE-related field.

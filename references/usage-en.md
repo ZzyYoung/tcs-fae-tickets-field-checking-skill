@@ -28,6 +28,12 @@ This skill is for two related Jira workflows in Telechips TITAN:
 - "Open each ticket, go to FAE, fill label/pattern/comment, then update."
 - "If the FAE section already has content, skip rewriting and just update."
 
+Before bulk editing the current user's own tickets, first apply this JQL:
+
+`created >= 2025-01-01 AND created <= 2026-03-27 AND reporter in (currentUser()) order by created DESC`
+
+If the filter box is not editable in basic mode, click **Advanced** and enter the JQL directly.
+
 ## Key operator details
 
 ### Audit mode

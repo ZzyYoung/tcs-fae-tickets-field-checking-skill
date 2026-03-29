@@ -33,6 +33,14 @@
 - Jira 的筛选页面或票列表能在该浏览器中打开
 - 批量处理时，请保持浏览器窗口打开并稳定
 
+## 修改本人票前的启动规则
+
+如果是批量处理用户本人 reporter 的票，开始前先在 Jira 中应用这条 JQL：
+
+`created >= 2025-01-01 AND created <= 2026-03-27 AND reporter in (currentUser()) order by created DESC`
+
+如果当前模式下筛选框不能直接编辑，就先点击 **Advanced**，再进入直接输入模式填写这条 JQL。
+
 ## FAE 关键规则
 
 - 检查或修改 FAE 前，必须先点 **FAE** 标签页

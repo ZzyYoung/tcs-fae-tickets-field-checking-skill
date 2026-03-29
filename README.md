@@ -35,6 +35,14 @@ Before using this skill:
 - The Jira list/filter page must be open or reachable in that browser
 - For bulk actions, keep the browser window open and stable
 
+## Important startup rule for editing your own tickets
+
+Before bulk editing tickets reported by the current user, first apply this JQL in Jira:
+
+`created >= 2025-01-01 AND created <= 2026-03-27 AND reporter in (currentUser()) order by created DESC`
+
+If the filter field is not editable in the current mode, click **Advanced** first and then enter the JQL directly.
+
 ## Important FAE rules
 
 - Always click **FAE** before checking or editing FAE-related fields

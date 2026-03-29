@@ -28,6 +28,12 @@
 - “打开每张票，进入 FAE，填 label / pattern / comment，然后 update。”
 - “如果 FAE 区域已经有内容，就不要重写，直接 update。”
 
+如果是处理用户本人 reporter 的票，开始批量修改前，先应用这条 JQL：
+
+`created >= 2025-01-01 AND created <= 2026-03-27 AND reporter in (currentUser()) order by created DESC`
+
+如果当前筛选框在基础模式下不能直接编辑，就先点击 **Advanced**，再进入直接输入模式粘贴这条 JQL。
+
 ## 操作关键点
 
 ### 检查模式
