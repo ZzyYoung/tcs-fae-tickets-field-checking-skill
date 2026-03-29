@@ -1,5 +1,7 @@
 # Titan FAE Tickets Field Checking Skill
 
+English | [中文说明](README.zh-CN.md)
+
 A skill for handling Telechips TITAN Jira FAE workflows.
 
 ## What this skill does
