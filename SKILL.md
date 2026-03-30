@@ -7,6 +7,28 @@ description: Inspect and update Jira tickets in Telechips TITAN using the browse
 
 Handle Telechips TITAN Jira tickets through the browser tool.
 
+## Startup URL and opening flow / 固定入口与打开流程
+
+Use this fixed TITAN URL:
+
+`https://tcs.telechips.com/secure/Dashboard.jspa`
+
+At the start of a new run:
+
+1. Automatically open this URL in **Chrome** with the browser tool.
+2. If TITAN is not logged in yet, stop and let the user log in manually in that same controllable Chrome window.
+3. After the user says login is complete, continue from the Jira UI.
+
+固定使用这个 TITAN 入口：
+
+`https://tcs.telechips.com/secure/Dashboard.jspa`
+
+每次新任务开始时：
+
+1. 用 browser tool 自动在 **Chrome** 打开这个 URL。
+2. 如果还没登录 TITAN，就暂停，等待用户在同一个可控 Chrome 窗口里手动登录。
+3. 用户说登录完成后，再继续后续 Jira 操作。
+
 ## Preconditions / 前提条件
 
 Before doing anything, ensure all of the following are true:
@@ -21,7 +43,7 @@ Before doing anything, ensure all of the following are true:
 1. OpenClaw 可以控制一个 Chrome 浏览器。
 2. 用户已经在**这个可控制的 Chrome 浏览器里**登录了 Jira/TITAN。
 3. 需要处理的筛选条件或 JQL 能在该浏览器会话中正常打开。
-4. 批量处理时，优先使用 issue navigator / split view，并保持当前登录态。
+4. 批量处理时，优先使用 issue navigator / split view，并保持当前登录态.
 
 ## Two operating modes / 两种工作模式
 
@@ -75,7 +97,15 @@ Use this only when the user explicitly wants tickets updated.
 
 If the task is edit/update mode:
 
-- Open the Jira issue search/list page.
+- Start from the fixed TITAN URL: `https://tcs.telechips.com/secure/Dashboard.jspa`
+- If login is required, wait for the user to complete login in the same Chrome window.
+- Do **not** use the top global header search box as plain text JQL input.
+- The top search box is only a gateway to the issue search page, not the real JQL execution field.
+- To begin correctly:
+  1. Open the TITAN dashboard in Chrome.
+  2. If needed, use the top global search only to enter the issue-search flow.
+  3. Enter the real issue search page.
+  4. Use the **Advanced Query** field there for JQL.
 - Before starting, apply this JQL for the current user's own reported tickets:
   `created >= 2025-01-01 AND created <= 2026-03-27 AND reporter in (currentUser()) order by created DESC`
 - If the filter area is not directly editable, click **Advanced** first, then paste/type the JQL directly.

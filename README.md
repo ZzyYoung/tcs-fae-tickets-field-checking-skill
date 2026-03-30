@@ -38,6 +38,21 @@ Before using this skill:
 - The Jira list/filter page must be open or reachable in that browser
 - For bulk actions, keep the browser window open and stable
 
+## Startup URL and opening flow
+
+Always start from this fixed TITAN URL:
+
+`https://tcs.telechips.com/secure/Dashboard.jspa`
+
+Recommended startup flow:
+
+1. Open the URL automatically in Chrome
+2. If login is required, let the user complete login manually in that same controllable Chrome window
+3. After login, continue the Jira workflow
+4. Do **not** treat the top global Search box as the real JQL input box
+5. Use the top Search only to reach the issue search page if needed
+6. Execute JQL in the **Advanced Query** field on the issue search page
+
 ## Important startup rule for editing your own tickets
 
 Before bulk editing tickets reported by the current user, first apply this JQL in Jira:

@@ -36,6 +36,21 @@
 - Jira 的筛选页面或票列表能在该浏览器中打开
 - 批量处理时，请保持浏览器窗口打开并稳定
 
+## 固定入口与打开流程
+
+固定从这个 TITAN URL 开始：
+
+`https://tcs.telechips.com/secure/Dashboard.jspa`
+
+建议开头流程：
+
+1. 自动在 Chrome 打开这个 URL
+2. 如果需要登录，让用户在同一个可控 Chrome 窗口里手动完成登录
+3. 登录完成后再继续 Jira 流程
+4. **不要**把顶栏全局 Search 当成真正执行 JQL 的输入框
+5. 必要时，顶栏 Search 只用于进入 issue search 页面
+6. 真正执行 JQL 要在 issue search 页面里的 **Advanced Query** 输入框中完成
+
 ## 修改本人票前的启动规则
 
 如果是批量处理用户本人 reporter 的票，开始前先在 Jira 中应用这条 JQL：
