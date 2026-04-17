@@ -1,74 +1,69 @@
-# Jira FAE Tickets Skill - 中文使用说明
+# 使用指南 — 中文
 
-## 目的
+## 快速开始
 
-这个 skill 用于 Telechips TITAN Jira 的两类工作：
+1. 确认 Chrome 已打开，TITAN 已登录。
+2. 提供审计用的 JQL（reporter、日期范围）。
+3. 告知 Claude 当前是**只检查模式**还是**修改更新模式**。
+4. 只检查模式：Claude 会同时检查 Field 标签页和 FAE 标签页。
+5. 修改更新模式：Claude 只修改 FAE 标签页字段（需明确指示）。
 
-1. **检查模式**：检查别人筛选后的票，找出哪些票缺少 FAE 内容。
-2. **修改模式**：处理自己筛选后的票，填写 FAE_Label、FAE Pattern、Comment。
+## 审计范围
 
-## 使用前提
+### Field 标签页（8 个字段）
+- O/S（操作系统）
+- Self Resolution（自主解决情况）
+- Cause(Customer)（客户原因分类）
+- Hardware Issue Pattern（硬件问题模式）
+- Software Issue Pattern（软件问题模式，只检查第一个）
+- Labels（标签）
+- FAE Person（负责 FAE）
+- git/repo command（Git/Repo 命令）
 
-- 用户必须已经登录 TITAN Jira。
-- 登录态必须存在于 **OpenClaw 可控制的同一个 Chrome 浏览器** 中。
-- 需要处理的票列表必须能在该浏览器标签页中打开。
-- 如果是大批量检查，要预留足够时间给多页扫描。
+### FAE 标签页（3 个字段）
+- FAE_Label
+- FAE Pattern
+- Comment
 
-## 典型请求示例
+## 常用 JQL
 
-### 检查模式示例
+**按 reporter 和日期范围：**
+```
+created >= 2025-01-01 AND created <= 2026-04-17 AND reporter in ("user@telechips.com") order by created DESC
+```
 
-- “帮我检查这个 reporter 的票，看看哪些票缺 FAE 字段。”
-- “用这个 JQL，把所有页都检查一遍，只告诉我 FAE_Label、FAE Pattern、Comment 为空的票。”
-- “不要改票，只做审计检查。”
-- “开一个独立子任务/子代理去把全部票检查完，再把进度和最终结果汇报给我。”
+**当前用户：**
+```
+created >= 2025-01-01 AND reporter in (currentUser()) order by created DESC
+```
 
-### 修改模式示例
+**按项目：**
+```
+project = TANCS5 AND created >= 2025-01-01 AND reporter in ("user@telechips.com") order by created DESC
+```
 
-- “继续把剩下的票 FAE 填完。”
-- “打开每张票，进入 FAE，填 label / pattern / comment，然后 update。”
-- “如果 FAE 区域已经有内容，就不要重写，直接 update。”
+## 工作模式说明
 
-如果是处理用户本人 reporter 的票，开始批量修改前，先应用这条 JQL：
+### 只检查模式（推荐用于审计他人的票）
+- Claude 只读取，不修改票。
+- 同时检查 Field 标签页和 FAE 标签页的所有字段。
+- 返回结构化的审计报告。
 
-`created >= 2025-01-01 AND created <= 2026-03-27 AND reporter in (currentUser()) order by created DESC`
+### 修改更新模式（只用于自己的票或有明确权限时）
+- Claude 只修改 FAE 标签页字段。
+- Field 标签页字段仅做检查，不自动修改（由用户决定是否补填）。
+- 进入编辑前必须先点击 FAE 标签页。
 
-如果当前筛选框在基础模式下不能直接编辑，就先点击 **Advanced**，再进入直接输入模式粘贴这条 JQL。
+## 输出格式
 
-## 操作关键点
+审计报告包含：
+- 汇总数量（总票数、有缺失的票数、总缺失字段数）
+- 每张票的缺失字段明细（区分 Field 标签页和 FAE 标签页）
+- 跳过的票列表（没有 FAE 标签页的票）
 
-### 检查模式
+## 注意事项
 
-- 如果是大批量、多页的审计任务，优先使用独立子任务/子代理来连续执行。
-- 对于只读审计，优先使用高效率的认证检查方式，而不是像人一样一张张慢速可视点击。
-- 主任务负责监督、回传进度、最终汇报结果。
-- 子任务启动后，主任务要明确告诉用户：正在查询，查询完成后会把结果反馈到这里。
-- 子任务只做检查，不修改数据。
-- 没有 FAE 标签页的票直接跳过。
-- 记录票号和缺失字段。
-
-### 修改模式
-
-- 必须先点击 FAE 标签页。
-- `FAE_Label` 输入后必须点真实候选项。
-- 点候选后稍等一下再 Update。
-- Comment 必须和该票内容匹配，不能所有票都写同一句。
-
-## 标签规则
-
-- `safellink`：只用于 TCC5110 和 SDM 相关票。
-- `CarPlay`：用于 CarPlay 相关票。
-- `notification`：用于通知/公告类票，且需要新建标签时。
-- 其他标签必须根据票内容决定，不能乱套。
-
-## 建议汇报格式
-
-建议检查结果至少包含：
-
-- 检查时间
-- 检查条件时间范围：2025-01-01 到 2026-03-27
-- 使用的 JQL
-- 已检查页数 / 总票数
-- 没有 FAE 标签页而跳过的票
-- 缺少 FAE 字段的票
-- 每张缺失票明确写出缺的是：`FAE_Label`、`FAE Pattern`、`Comment`
+- 大批量审计（50 张以上）时，优先使用 REST API 方式，比浏览器点击快得多。
+- 首次使用前，先调用 `GET /rest/api/2/field` 确认各字段的 customfield ID。
+- Software Issue Pattern：如果存在多个同名字段，只检查**第一个**。
+- Labels 是 Jira 内置字段，直接使用 `labels`，无需 customfield ID。

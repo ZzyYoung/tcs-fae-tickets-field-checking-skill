@@ -1,74 +1,68 @@
-# Jira FAE Tickets Skill - English Usage
+# Usage Guide — English
 
-## Purpose
+## Quick start
 
-This skill is for two related Jira workflows in Telechips TITAN:
+1. Ensure Chrome is open and TITAN is logged in.
+2. Provide the JQL for the audit (reporter, date range).
+3. Tell Claude whether this is **check-only** or **edit/update** mode.
+4. For check-only: Claude will audit both the Field tab AND the FAE tab.
+5. For edit/update: Claude will only update FAE tab fields (as instructed).
 
-1. **Audit mode**: inspect someone else's filtered tickets and find which tickets have missing FAE data.
-2. **Edit mode**: update your own filtered tickets by filling FAE_Label, FAE Pattern, and Comment.
+## Audit scope
 
-## Requirements
+### Field Tab (8 fields)
+- O/S
+- Self Resolution
+- Cause(Customer)
+- Hardware Issue Pattern
+- Software Issue Pattern (first field only)
+- Labels
+- FAE Person
+- git/repo command
 
-- The user must already be logged in to TITAN Jira.
-- The login must exist in the same Chrome browser that OpenClaw can control.
-- The ticket list must be reachable through a browser-controlled tab.
-- For large audits, allow enough time for multi-page checking.
+### FAE Tab (3 fields)
+- FAE_Label
+- FAE Pattern
+- Comment
 
-## Example user requests
+## Common JQL patterns
 
-### Audit mode examples
+**By reporter, date range:**
+```
+created >= 2025-01-01 AND created <= 2026-04-17 AND reporter in ("user@telechips.com") order by created DESC
+```
 
-- "Check this reporter's tickets and tell me which ones are missing FAE fields."
-- "Use this JQL and inspect all pages. Only report tickets with empty FAE_Label, FAE Pattern, or Comment."
-- "Do not modify the tickets, just audit them."
-- "Create a separate task/agent to run the full audit and just report progress back to me."
+**Current user:**
+```
+created >= 2025-01-01 AND reporter in (currentUser()) order by created DESC
+```
 
-### Edit mode examples
+**By project:**
+```
+project = TANCS5 AND created >= 2025-01-01 AND reporter in ("user@telechips.com") order by created DESC
+```
 
-- "Continue filling FAE for the remaining tickets."
-- "Open each ticket, go to FAE, fill label/pattern/comment, then update."
-- "If the FAE section already has content, skip rewriting and just update."
+## Audit modes
 
-Before bulk editing the current user's own tickets, first apply this JQL:
+### Check-only (recommended for auditing another person's tickets)
+- Claude inspects tickets without modifying them.
+- Both Field tab and FAE tab fields are checked.
+- Results are returned as a structured report.
 
-`created >= 2025-01-01 AND created <= 2026-03-27 AND reporter in (currentUser()) order by created DESC`
+### Edit/update (only for your own tickets or with explicit permission)
+- Claude modifies FAE tab fields only.
+- Field tab fields are checked but NOT modified automatically (user decides).
+- Always clicks FAE tab first before editing.
 
-If the filter box is not editable in basic mode, click **Advanced** and enter the JQL directly.
+## Output format
 
-## Key operator details
+The audit report includes:
+- Summary counts
+- Per-ticket breakdown of missing fields (Field tab vs FAE tab)
+- List of skipped tickets (no FAE tab)
 
-### Audit mode
+## Tips
 
-- For large multi-page audits, prefer running the inspection in a dedicated sub-task/sub-agent.
-- For read-only audits, prefer a high-efficiency authenticated inspection method when available instead of visible human-like clicking through every ticket.
-- The main session should supervise, share progress, and present final results.
-- Immediately after launching the worker, the main session should tell the user that the query is in progress and that the result will be sent back here when finished.
-- The worker task should inspect tickets without modifying data.
-- Skip tickets with no FAE tab.
-- Record ticket key + which fields are missing.
-
-### Edit mode
-
-- Always click the FAE tab first.
-- For FAE_Label, select a real label suggestion after typing.
-- Wait briefly before updating.
-- Use ticket-specific English comments, not one generic comment for all tickets.
-
-## Label guidance
-
-- `safellink`: only for TCC5110 and SDM related tickets.
-- `CarPlay`: for CarPlay related issues.
-- `notification`: for notice/announcement tickets when creating a new label.
-- Other labels must follow actual ticket context.
-
-## Reporting template
-
-Recommended result structure:
-
-- Check time
-- Filter range: 2025-01-01 to 2026-03-27
-- JQL used
-- Pages checked / total tickets
-- Skipped tickets (no FAE tab)
-- Tickets with missing FAE fields
-- For each missing ticket: specify missing `FAE_Label`, `FAE Pattern`, `Comment`
+- For large audits (50+ tickets), the REST API method is preferred over browser clicking.
+- Always verify custom field IDs using `GET /rest/api/2/field` before first use.
+- Software Issue Pattern: only the first field is audited if multiple exist.
