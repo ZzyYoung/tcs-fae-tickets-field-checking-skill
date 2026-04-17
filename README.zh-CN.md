@@ -1,101 +1,70 @@
 # Titan FAE Tickets Field Checking Skill
 
-这是一个用于处理 Telechips TITAN Jira 中 FAE 工作流的 skill。
+这是一个用于 Telechips TITAN Jira 票据审计与更新的 OpenClaw skill，覆盖 **FAE** 标签页和 **Field** 标签页。
 
 ## 这个 skill 做什么
 
-它主要支持两类实际场景：
+它主要支持两类场景：
 
-1. **FAE 字段修改模式**
-   - 从 Jira 的筛选条件 / JQL 结果中打开票
-   - 进入 **FAE** 标签页
-   - 填写或修改：
-     - `FAE_Label`
-     - `FAE Pattern`
-     - `Comment`
-   - 安全地更新票内容
+1. **只检查审计模式**
+   - 检查别人 reporter 名下的 Jira 票
+   - 同时检查 **FAE** 标签页和 **Field** 标签页字段
+   - 最终只返回票号和缺失字段
+   - 大批量检查时优先使用高效率只读检查方式
 
-2. **FAE 审计检查模式**
-   - 检查别人 reporter 名下的票
-   - 验证以下字段是否为空：
-     - `FAE_Label`
-     - `FAE Pattern`
-     - `Comment`
-   - 没有 FAE 标签页的票直接跳过
-   - 最终只返回缺项票号和缺失字段
-   - 如果是大批量、多页检查，优先用独立子任务/子代理连续执行，主任务只负责汇报进度和最终结果
-   - 对于只读审计，尽量优先使用高效率检查方式，而不是像人一样逐票慢速点击
-   - 子任务启动后，主任务要提示用户：正在查询，查询结束后会把结果反馈到这里
+2. **修改更新模式**
+   - 从 JQL 过滤结果中打开你自己的 Jira 票
+   - 修改 FAE 相关内容前必须先进入 **FAE** 标签页
+   - 安全填写或更新相关字段
+   - 更新后保持浏览器会话不被破坏
+
+## 覆盖字段
+
+### FAE 标签页
+- `FAE_Label`
+- `FAE Pattern`
+- `Comment`
+
+### Field 标签页
+- `O/S`
+- `Self Resolution`
+- `Cause(Customer)`
+- `Hardware Issue Pattern`
+- `Software Issue Pattern`（只检查第一个）
+- `Labels`
+- `FAE Person`
+- `git/repo command`
 
 ## 使用前提
 
 使用前必须满足：
 
-- 你已经登录了 Telechips TITAN Jira
-- 登录态存在于 **OpenClaw 可以控制的同一个 Chrome 浏览器** 中
-- Jira 的筛选页面或票列表能在该浏览器中打开
-- 批量处理时，请保持浏览器窗口打开并稳定
+- 你已经登录 Telechips TITAN Jira
+- 登录态存在于 OpenClaw 可控制的同一个 Chrome 浏览器中
+- Jira 列表页或筛选页能在该浏览器中打开
+- 批量处理时保持浏览器稳定
 
-## 固定入口与打开流程
+## 固定入口
 
-固定从这个 TITAN URL 开始：
+固定从这里开始：
 
 `https://tcs.telechips.com/secure/Dashboard.jspa`
 
-建议开头流程：
+## 关键规则
 
-1. 自动在 Chrome 打开这个 URL
-2. 如果需要登录，让用户在同一个可控 Chrome 窗口里手动完成登录
-3. 登录完成后再继续 Jira 流程
-4. **不要**把顶栏全局 Search 当成真正执行 JQL 的输入框
-5. 必要时，顶栏 Search 只用于进入 issue search 页面
-6. 真正执行 JQL 要在 issue search 页面里的 **Advanced Query** 输入框中完成
-
-## 修改本人票前的启动规则
-
-如果是批量处理用户本人 reporter 的票，开始前先在 Jira 中应用这条 JQL：
-
-`created >= 2025-01-01 AND created <= 2026-03-27 AND reporter in (currentUser()) order by created DESC`
-
-如果当前模式下筛选框不能直接编辑，就先点击 **Advanced**，再进入直接输入模式填写这条 JQL。
-
-## FAE 关键规则
-
-- 检查或修改 FAE 前，必须先点 **FAE** 标签页
-- `FAE_Label` 是标签选择器，不是普通文本框
-- 输入标签后，必须：
-  1. 等待候选项出现
-  2. 点击聚焦的候选项或创建项
-  3. 稍等一下
-  4. 再点击 **Update**
-- 如果需要创建新标签，不要使用带空格的标签
-  - 正确：`notification`
-  - 错误：`Technical Document`
-
-## 标签示例
-
-- `safellink` → 仅用于 **TCC5110** 和 **SDM** 相关票
-- `CarPlay` → 用于 CarPlay 相关票
-- `notification` → 用于通知/公告类票，且需要新建标签时
-- 其他标签必须根据票的实际内容决定
-
-## 建议的检查汇报格式
-
-建议检查结果包含：
-
-- 检查时间
-- 检查条件时间范围
-- 使用的 JQL / filter
-- 总页数 / 总票数
-- 没有 FAE 标签页而跳过的票
-- 缺少 FAE 字段的票
+- 检查或修改 FAE 相关内容前，必须先点 **FAE**
+- 审计模式下，必须同时检查 **Field** 和 **FAE** 两个标签页
+- `FAE_Label` 是标签选择器，不是普通文本输入框
+- 创建或选择标签时，要等待候选项出现并选中目标项，再点击更新
+- 大批量只读检查时，优先使用更快的已认证检查方式
 
 ## 仓库包含文件
 
 - `SKILL.md` — 主 skill 说明
 - `references/usage-en.md` — 英文使用说明
 - `references/usage-zh.md` — 中文使用说明
-- `jira-fae-tickets.skill` — 打包后的 skill 文件
+- `references/field-tab-fields.md` — Field 标签页说明
+- `jira-fae-tickets.skill` — 打包后的 skill 压缩包
 
 ## English version
 
