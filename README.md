@@ -83,6 +83,14 @@ Recommended audit report includes:
 - Tickets with missing required fields in either tab
 - Explicitly report `SDK Version (TITAN)` and `Ref. H/W version` as missing when they are empty or `None`
 
+## Recent updates
+
+- Expanded FAE tab audit scope from 3 fields to 5 fields
+- Added checks for `SDK Version (TITAN)` and `Ref. H/W version`
+- Defined `None` as missing for those two FAE fields
+- Kept the newer dual-tab audit model, which checks both **Field** and **FAE** tabs
+- Clarified that reports should explicitly show whether missing items come from the Field tab or the FAE tab
+
 ## Included files
 
 - `SKILL.md` — main skill instructions

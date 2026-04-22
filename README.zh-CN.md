@@ -81,6 +81,14 @@
 - 任一标签页存在缺失字段的票
 - 明确标出 `SDK Version (TITAN)` 和 `Ref. H/W version` 为空或 `None` 的情况
 
+## 最近更新
+
+- FAE 标签页审计范围从 3 个字段扩展为 5 个字段
+- 新增 `SDK Version (TITAN)` 和 `Ref. H/W version` 两个检查项
+- 明确这两个 FAE 字段在值为 `None` 时也视为缺失
+- 保留并延续当前的双标签页审计模型，也就是同时检查 **Field** 和 **FAE** 两个标签页
+- 明确要求汇报结果区分缺失项来自 Field 标签页还是 FAE 标签页
+
 ## 仓库包含文件
 
 - `SKILL.md` — 主 skill 说明
