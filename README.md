@@ -26,6 +26,10 @@ This skill supports two practical workflows:
 - `FAE_Label`
 - `FAE Pattern`
 - `Comment`
+- `SDK Version (TITAN)`
+- `Ref. H/W version`
+
+For audit mode, treat `SDK Version (TITAN): None` and `Ref. H/W version: None` as missing.
 
 ### Field tab
 - `O/S`
@@ -59,6 +63,25 @@ Always start from:
 - `FAE_Label` is a label picker, not plain text
 - When creating/selecting labels, wait for suggestions and select the intended item before updating
 - For large check-only audits, prefer a faster authenticated inspection method when available
+
+## Label examples
+
+- `safellink` → only for **TCC5110** and **SDM** related tickets
+- `CarPlay` → for CarPlay related tickets
+- `notification` → for notice/announcement type tickets when a new label is needed
+- Other labels should follow the actual ticket context
+
+## Reporting style
+
+Recommended audit report includes:
+
+- Check time
+- Filter time range
+- JQL/filter used
+- Total pages / total tickets
+- Skipped tickets with no FAE tab
+- Tickets with missing required fields in either tab
+- Explicitly report `SDK Version (TITAN)` and `Ref. H/W version` as missing when they are empty or `None`
 
 ## Included files
 

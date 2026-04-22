@@ -24,6 +24,10 @@
 - `FAE_Label`
 - `FAE Pattern`
 - `Comment`
+- `SDK Version (TITAN)`
+- `Ref. H/W version`
+
+在审计模式下，`SDK Version (TITAN): None` 和 `Ref. H/W version: None` 也视为缺失。
 
 ### Field 标签页
 - `O/S`
@@ -57,6 +61,25 @@
 - `FAE_Label` 是标签选择器，不是普通文本输入框
 - 创建或选择标签时，要等待候选项出现并选中目标项，再点击更新
 - 大批量只读检查时，优先使用更快的已认证检查方式
+
+## 标签示例
+
+- `safellink` → 仅用于 **TCC5110** 和 **SDM** 相关票
+- `CarPlay` → 用于 CarPlay 相关票
+- `notification` → 用于通知/公告类票，且需要新建标签时
+- 其他标签必须根据票的实际内容决定
+
+## 建议的检查汇报格式
+
+建议检查结果包含：
+
+- 检查时间
+- 检查条件时间范围
+- 使用的 JQL / filter
+- 总页数 / 总票数
+- 没有 FAE 标签页而跳过的票
+- 任一标签页存在缺失字段的票
+- 明确标出 `SDK Version (TITAN)` 和 `Ref. H/W version` 为空或 `None` 的情况
 
 ## 仓库包含文件
 
