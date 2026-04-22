@@ -1,6 +1,6 @@
 ---
 name: jira-fae-tickets
-description: Inspect and update Jira tickets in Telechips TITAN using the browser tool, especially FAE tab handling for FAE_Label, FAE Pattern, Comment, SDK Version (TITAN), and Ref. H/W version, AND Field tab handling for O/S, Self Resolution, Cause(Customer), Hardware Issue Pattern, Software Issue Pattern, Labels, FAE Person, and git/repo command. Use when auditing another reporter's tickets for missing FAE or Field tab fields, or when editing your own reporter-filtered tickets to fill/update FAE content. Includes bilingual (English/Chinese) workflow notes, browser-login prerequisites, FAE label selection rules, Field tab checks, pagination handling, and safe differences between check-only mode and edit/update mode.
+description: Inspect and update Jira tickets in Telechips TITAN using the browser tool, especially FAE tab handling for FAE_Label, FAE Pattern, and Comment, AND Field tab handling for O/S, Self Resolution, Cause(Customer), Hardware Issue Pattern, Software Issue Pattern, Labels, FAE Person, git/repo command, SDK Version (TITAN), and Ref. H/W version. Use when auditing another reporter's tickets for missing FAE or Field tab fields, or when editing your own reporter-filtered tickets to fill/update FAE content. Includes bilingual (English/Chinese) workflow notes, browser-login prerequisites, FAE label selection rules, Field tab checks, pagination handling, and safe differences between check-only mode and edit/update mode.
 ---
 
 # Jira FAE Tickets
@@ -101,12 +101,10 @@ If the task is edit/update mode:
 - Work ticket by ticket.
 - Click **Edit**.
 - **Always click the FAE tab** before touching any FAE-related field.
-- If any of these already contains content:
+- If any of these FAE fields already contains content:
   - `FAE_Label`
   - `FAE Pattern`
   - `Comment`
-  - `SDK Version (TITAN)`
-  - `Ref. H/W version`
   then skip rewriting and click **Update** only if the user requested this behavior.
 - Otherwise, fill the required FAE fields and write a ticket-specific English technical comment.
 - Click **Update**.
@@ -116,12 +114,10 @@ If the task is edit/update mode:
 - 逐票处理。
 - 点击 **Edit**。
 - **必须先点 FAE 标签页**，再操作 FAE 相关字段。
-- 如果以下任意字段已经有内容：
+- 如果以下任意 FAE 字段已经有内容：
   - `FAE_Label`
   - `FAE Pattern`
   - `Comment`
-  - `SDK Version (TITAN)`
-  - `Ref. H/W version`
   则按用户规则决定是否跳过重写并直接 **Update**。
 - 如果为空，再填写 FAE 字段，并写一条与该票内容对应的英文技术 comment。
 - 点击 **Update**。
@@ -139,7 +135,7 @@ The **Field** tab (also called the "Field Tab" or general fields area) contains 
 
 ### Fields to check in Field Tab / 需检查的字段
 
-Check all 8 of the following fields for empty/None value:
+Check all 10 of the following fields for empty/None value:
 
 | Field Name | Description / 说明 | Empty condition |
 |---|---|---|
@@ -151,6 +147,8 @@ Check all 8 of the following fields for empty/None value:
 | `Labels` | Jira labels / 标签 | empty array or no labels |
 | `FAE Person` | Responsible FAE engineer / 负责 FAE | null, empty string, or "None" |
 | `git/repo command` | Git/Repo command reference / Git/Repo 命令 | null, empty string, or "None" |
+| `SDK Version (TITAN)` | TITAN SDK version / TITAN SDK 版本 | null, empty string, or "None" |
+| `Ref. H/W version` | Reference hardware version / 参考硬件版本 | null, empty string, or "None" |
 
 **Important for Software Issue Pattern:** If there are multiple Software Issue Pattern fields in the Field tab, only check the **first** one. Ignore subsequent instances.
 
@@ -162,7 +160,7 @@ When inspecting via browser:
 
 1. Open the ticket in edit mode (click **Edit**).
 2. Click the **Field** tab (not the FAE tab).
-3. Check each of the 8 fields listed above.
+3. Check each of the 10 fields listed above.
 4. Record any that are empty/None.
 5. Then switch to the **FAE** tab and check FAE fields (see FAE section below).
 6. Click **Cancel** when done.
@@ -201,6 +199,8 @@ Look for fields matching these names (case-insensitive):
 - `Labels` → standard field, use `labels`
 - `FAE Person` → find the matching `customfield_XXXXX`
 - `git/repo command` → find the matching `customfield_XXXXX`
+- `SDK Version (TITAN)` → find the matching `customfield_XXXXX`
+- `Ref. H/W version` → find the matching `customfield_XXXXX`
 
 **Empty detection logic:**
 
@@ -231,15 +231,13 @@ startAt=50, maxResults=50 → page 2
 
 ### Fields to check in FAE Tab / 需检查的字段
 
-Check these 5 fields:
+Check these 3 fields:
 
 | Field | Empty condition |
 |---|---|
 | `FAE_Label` | no labels selected |
 | `FAE Pattern` | null or empty |
 | `Comment` | null or empty |
-| `SDK Version (TITAN)` | null, empty, or `None` |
-| `Ref. H/W version` | null, empty, or `None` |
 
 ### Critical FAE handling rules / FAE 关键规则
 
@@ -293,12 +291,12 @@ For each ticket:
   2. → Click "Field" tab
      Check: O/S, Self Resolution, Cause(Customer),
             Hardware Issue Pattern, Software Issue Pattern (1st only),
-            Labels, FAE Person, git/repo command
-     Record any empty fields
-  3. → Click "FAE" tab
-     Check: FAE_Label, FAE Pattern, Comment,
+            Labels, FAE Person, git/repo command,
             SDK Version (TITAN), Ref. H/W version
      Record any empty fields or fields set to None
+  3. → Click "FAE" tab
+     Check: FAE_Label, FAE Pattern, Comment
+     Record any empty fields
   4. Click Cancel
   5. Log: ticket key + list of all missing fields (Field tab + FAE tab)
 ```
@@ -311,12 +309,12 @@ For each ticket:
   2. → 点击 "Field" 标签页
      检查：O/S、Self Resolution、Cause(Customer)、
            Hardware Issue Pattern、Software Issue Pattern（只检查第一个）、
-           Labels、FAE Person、git/repo command
-     记录空值字段
-  3. → 点击 "FAE" 标签页
-     检查：FAE_Label、FAE Pattern、Comment、
+           Labels、FAE Person、git/repo command、
            SDK Version (TITAN)、Ref. H/W version
      记录空值字段，以及值为 None 的字段
+  3. → 点击 "FAE" 标签页
+     检查：FAE_Label、FAE Pattern、Comment
+     记录空值字段
   4. 点击 Cancel
   5. 记录：票号 + 所有缺失字段名（Field 标签页 + FAE 标签页）
 ```
@@ -349,7 +347,7 @@ When returning results from an audit, include:
 4. Total pages / total tickets if known
 5. Skipped tickets with no FAE section
 6. **Field tab missing fields** — per ticket
-7. **FAE tab missing fields** — per ticket, including `SDK Version (TITAN)` and `Ref. H/W version` when empty or `None`
+7. **FAE tab missing fields** — per ticket
 8. Summary table: ticket key | missing Field fields | missing FAE fields | total missing count
 
 检查类结果建议包含：
@@ -360,7 +358,7 @@ When returning results from an audit, include:
 4. 总页数 / 总票数（如果已知）
 5. 没有 FAE 区域而跳过的票
 6. **Field 标签页缺失字段**（按票列出）
-7. **FAE 标签页缺失字段**（按票列出，包含 `SDK Version (TITAN)` 和 `Ref. H/W version` 为空或 `None` 的情况）
+7. **FAE 标签页缺失字段**（按票列出）
 8. 汇总表：票号 | Field 缺失字段 | FAE 缺失字段 | 总缺失数
 
 ### Example report output / 示例汇报格式
@@ -375,8 +373,8 @@ Tickets with Missing Fields: 15
 Total Missing Field Entries: 38
 
 --- Non-Compliant Tickets ---
-TANCS5-101 | Field: O/S, Labels | FAE: FAE_Label, SDK Version (TITAN) | Total: 4
-TANCS5-88  | Field: Self Resolution, FAE Person | FAE: Ref. H/W version | Total: 3
+TANCS5-101 | Field: O/S, Labels, SDK Version (TITAN) | FAE: FAE_Label | Total: 4
+TANCS5-88  | Field: Self Resolution, FAE Person, Ref. H/W version | FAE: — | Total: 3
 ...
 
 --- Skipped (no FAE tab): TANCS5-77, TANCS5-55

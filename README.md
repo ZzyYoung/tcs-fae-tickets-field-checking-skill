@@ -26,10 +26,6 @@ This skill supports two practical workflows:
 - `FAE_Label`
 - `FAE Pattern`
 - `Comment`
-- `SDK Version (TITAN)`
-- `Ref. H/W version`
-
-For audit mode, treat `SDK Version (TITAN): None` and `Ref. H/W version: None` as missing.
 
 ### Field tab
 - `O/S`
@@ -40,6 +36,10 @@ For audit mode, treat `SDK Version (TITAN): None` and `Ref. H/W version: None` a
 - `Labels`
 - `FAE Person`
 - `git/repo command`
+- `SDK Version (TITAN)`
+- `Ref. H/W version`
+
+For audit mode, treat `SDK Version (TITAN): None` and `Ref. H/W version: None` as missing.
 
 ## Preconditions
 
@@ -85,9 +85,9 @@ Recommended audit report includes:
 
 ## Recent updates
 
-- Expanded FAE tab audit scope from 3 fields to 5 fields
-- Added checks for `SDK Version (TITAN)` and `Ref. H/W version`
-- Defined `None` as missing for those two FAE fields
+- Kept FAE tab scope at 3 fields: `FAE_Label`, `FAE Pattern`, `Comment`
+- Added checks for `SDK Version (TITAN)` and `Ref. H/W version` under the **Field** tab
+- Defined `None` as missing for those two Field tab fields
 - Kept the newer dual-tab audit model, which checks both **Field** and **FAE** tabs
 - Clarified that reports should explicitly show whether missing items come from the Field tab or the FAE tab
 

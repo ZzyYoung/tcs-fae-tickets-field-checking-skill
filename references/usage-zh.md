@@ -10,7 +10,7 @@
 
 ## 审计范围
 
-### Field 标签页（8 个字段）
+### Field 标签页（10 个字段）
 - O/S（操作系统）
 - Self Resolution（自主解决情况）
 - Cause(Customer)（客户原因分类）
@@ -19,15 +19,15 @@
 - Labels（标签）
 - FAE Person（负责 FAE）
 - git/repo command（Git/Repo 命令）
-
-### FAE 标签页（5 个字段）
-- FAE_Label
-- FAE Pattern
-- Comment
 - SDK Version (TITAN)
 - Ref. H/W version
 
 在审计模式下，`SDK Version (TITAN): None` 和 `Ref. H/W version: None` 也要判定为缺失。
+
+### FAE 标签页（3 个字段）
+- FAE_Label
+- FAE Pattern
+- Comment
 
 ## 常用 JQL
 
@@ -70,7 +70,7 @@ project = TANCS5 AND created >= 2025-01-01 AND reporter in ("user@telechips.com"
 - 汇总数量（总票数、有缺失的票数、总缺失字段数）
 - 每张票的缺失字段明细（区分 Field 标签页和 FAE 标签页）
 - 跳过的票列表（没有 FAE 标签页的票）
-- 明确标出 `SDK Version (TITAN)` 和 `Ref. H/W version` 为空或 `None` 的情况
+- 明确标出 **Field 标签页** 中 `SDK Version (TITAN)` 和 `Ref. H/W version` 为空或 `None` 的情况
 
 ## 注意事项
 

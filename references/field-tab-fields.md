@@ -1,6 +1,6 @@
 # Field Tab — Custom Field ID Lookup Guide
 
-This file explains how to find the correct Jira custom field IDs for the 8 Field Tab fields
+This file explains how to find the correct Jira custom field IDs for the 10 Field Tab fields
 that must be audited in TITAN. Custom field IDs differ per Jira instance and must be verified
 before running API-based audits.
 
@@ -39,6 +39,8 @@ Search the returned array for entries where `name` matches (case-insensitive):
 | `Labels` | This is a standard built-in field — use `labels` directly, no customfield ID needed |
 | `FAE Person` | May appear as "FAE_Person" or similar |
 | `git/repo command` | May include slash or be hyphenated |
+| `SDK Version (TITAN)` | TITAN SDK version field |
+| `Ref. H/W version` | Reference hardware version field |
 
 ## Step 3: Note the IDs
 
@@ -86,3 +88,5 @@ Use the `isBlank()` function defined in SKILL.md to normalize all of these to a 
 | Labels | `labels` (built-in) | label array |
 | FAE Person | TBD | user picker |
 | git/repo command | TBD | text |
+| SDK Version (TITAN) | TBD | text or select |
+| Ref. H/W version | TBD | text or select |

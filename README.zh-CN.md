@@ -24,10 +24,6 @@
 - `FAE_Label`
 - `FAE Pattern`
 - `Comment`
-- `SDK Version (TITAN)`
-- `Ref. H/W version`
-
-在审计模式下，`SDK Version (TITAN): None` 和 `Ref. H/W version: None` 也视为缺失。
 
 ### Field 标签页
 - `O/S`
@@ -38,6 +34,10 @@
 - `Labels`
 - `FAE Person`
 - `git/repo command`
+- `SDK Version (TITAN)`
+- `Ref. H/W version`
+
+在审计模式下，`SDK Version (TITAN): None` 和 `Ref. H/W version: None` 也视为缺失。
 
 ## 使用前提
 
@@ -83,9 +83,9 @@
 
 ## 最近更新
 
-- FAE 标签页审计范围从 3 个字段扩展为 5 个字段
-- 新增 `SDK Version (TITAN)` 和 `Ref. H/W version` 两个检查项
-- 明确这两个 FAE 字段在值为 `None` 时也视为缺失
+- FAE 标签页维持 3 个字段：`FAE_Label`、`FAE Pattern`、`Comment`
+- 在 **Field** 标签页新增 `SDK Version (TITAN)` 和 `Ref. H/W version` 两个检查项
+- 明确这两个 Field 字段在值为 `None` 时也视为缺失
 - 保留并延续当前的双标签页审计模型，也就是同时检查 **Field** 和 **FAE** 两个标签页
 - 明确要求汇报结果区分缺失项来自 Field 标签页还是 FAE 标签页
 

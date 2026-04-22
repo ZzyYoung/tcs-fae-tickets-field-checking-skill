@@ -10,7 +10,7 @@
 
 ## Audit scope
 
-### Field Tab (8 fields)
+### Field Tab (10 fields)
 - O/S
 - Self Resolution
 - Cause(Customer)
@@ -19,15 +19,15 @@
 - Labels
 - FAE Person
 - git/repo command
-
-### FAE Tab (5 fields)
-- FAE_Label
-- FAE Pattern
-- Comment
 - SDK Version (TITAN)
 - Ref. H/W version
 
 Treat `SDK Version (TITAN): None` and `Ref. H/W version: None` as missing in audit mode.
+
+### FAE Tab (3 fields)
+- FAE_Label
+- FAE Pattern
+- Comment
 
 ## Common JQL patterns
 
@@ -70,7 +70,7 @@ The audit report includes:
 - Summary counts
 - Per-ticket breakdown of missing fields (Field tab vs FAE tab)
 - List of skipped tickets (no FAE tab)
-- Explicit mention when `SDK Version (TITAN)` or `Ref. H/W version` is empty or `None`
+- Explicit mention when `SDK Version (TITAN)` or `Ref. H/W version` is empty or `None` in the **Field** tab
 
 ## Tips
 
