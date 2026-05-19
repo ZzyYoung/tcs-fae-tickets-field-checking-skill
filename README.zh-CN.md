@@ -1,6 +1,13 @@
 # Titan FAE Tickets Field Checking Skill
 
-这是一个用于 Telechips TITAN Jira 票据审计与更新的 OpenClaw skill，覆盖 **FAE** 标签页和 **Field** 标签页。
+这是一个用于 Telechips TITAN Jira 票据审计与更新的 OpenClaw skill，目标系统是 `tcs.telechips.com`，覆盖 **FAE** 标签页和 **Field** 标签页。
+
+## 系统与范围
+
+- TCS（`tcs.telechips.com`）是 Jira 部署域名；TITAN 是 Jira 实例/上下文。对这个 skill 来说，它们是同一个系统。
+- 只审计 TITAN_Customer 票：`TANCS-*`、`TANCS4-*`、`TANCS5-*`、`TANCS6-*`、`TANCS7-*`。
+- 跳过其他项目，例如 `TMRCR-*`、`TMCF-*`、`TPCP-*`、`IM*`、`IS*`、`IG*`；这些不属于本 skill 的 FAE/Field 审计范围。
+- 大批量只读检查时，使用 Jira REST API 分页获取，不要逐张打开工单。
 
 ## 这个 skill 做什么
 
@@ -28,16 +35,53 @@
 ### Field 标签页
 - `O/S`
 - `Self Resolution`
-- `Cause(Customer)`
+- `Cause (Customer)`
 - `Hardware Issue Pattern`
 - `Software Issue Pattern`（只检查第一个）
 - `Labels`
 - `FAE Person`
 - `git/repo command`
-- `SDK Version (TITAN)`
-- `Ref. H/W version`
 
-在审计模式下，`SDK Version (TITAN): None` 和 `Ref. H/W version: None` 也视为缺失。
+不要审计 `SDK Version (TITAN)`、`Ref. H/W version` 或上述列表之外的其他字段。
+
+## 固定字段 ID 映射
+
+### FAE 标签页
+
+| 字段 | customfield_id | 类型 | "空" 判定 |
+|---|---|---|---|
+| `FAE_Label` | `customfield_15300` | array | null 或 `[]` |
+| `FAE Pattern` | `customfield_15200` | option | null |
+| `Comment` | `comment` | array | `comment.comments.length === 0` |
+
+### Field 标签页
+
+| 字段 | customfield_id | 类型 | "空" 判定 |
+|---|---|---|---|
+| `O/S` | `customfield_10684` | option | null 或 `value === 'None'` |
+| `Self Resolution` | `customfield_15009` | option | null 或 `value === 'None'` |
+| `Cause (Customer)` | `customfield_15044` | option | null 或 `value === 'None'` |
+| `Hardware Issue Pattern` | `customfield_15045` | option | null 或 `value === 'None'` |
+| `Software Issue Pattern` | `customfield_15046` | option，仅第一个下拉框 | null 或 `value === 'None'` |
+| `Labels` | `labels` | array | `[]` |
+| `FAE Person` | `customfield_15100` | user/string | null 或 `''` |
+| `git/repo command` | `customfield_15101` | string | null 或 `''` |
+
+注意：Jira metadata 中有两个字段都叫 `git/repo command`（`customfield_15008` 和 `customfield_15101`），Field 标签页实际显示的是 `customfield_15101`。
+
+## REST API 审计
+
+批量只读审计使用 Jira search API：
+
+```text
+GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&maxResults=50&startAt=<offset>
+```
+
+认证方式：
+
+1. 浏览器 Console：在 `https://tcs.telechips.com` 打开 DevTools，粘贴 `SKILL.md` 中的审计脚本，浏览器会自动带 cookie。
+2. Personal Access Token (PAT)：如果 TITAN 支持。
+3. `JSESSIONID` cookie：从 DevTools 复制后作为 Cookie header 使用，例如 `export JIRA_COOKIE='JSESSIONID=...'`。
 
 ## 使用前提
 
@@ -58,9 +102,10 @@
 
 - 检查或修改 FAE 相关内容前，必须先点 **FAE**
 - 审计模式下，必须同时检查 **Field** 和 **FAE** 两个标签页
+- 审计结果必须限制在上面列出的 TITAN_Customer 票号前缀内
 - `FAE_Label` 是标签选择器，不是普通文本输入框
 - 创建或选择标签时，要等待候选项出现并选中目标项，再点击更新
-- 大批量只读检查时，优先使用更快的已认证检查方式
+- 大批量只读检查时，优先使用 Jira REST API 分页方式，不逐张点击工单
 
 ## 标签示例
 
@@ -77,15 +122,15 @@
 - 检查条件时间范围
 - 使用的 JQL / filter
 - 总页数 / 总票数
-- 没有 FAE 标签页而跳过的票
+- 因不属于 TITAN_Customer 范围或没有 FAE 标签页而跳过的票
 - 任一标签页存在缺失字段的票
-- 明确标出 `SDK Version (TITAN)` 和 `Ref. H/W version` 为空或 `None` 的情况
 
 ## 最近更新
 
 - FAE 标签页维持 3 个字段：`FAE_Label`、`FAE Pattern`、`Comment`
-- 在 **Field** 标签页新增 `SDK Version (TITAN)` 和 `Ref. H/W version` 两个检查项
-- 明确这两个 Field 字段在值为 `None` 时也视为缺失
+- Field 标签页范围限定为 8 个字段，并明确排除 `SDK Version (TITAN)` 和 `Ref. H/W version`
+- 明确 TCS 和 TITAN 在本 skill 中指同一个 Jira 系统
+- 增加固定 customfield ID 映射和 REST API 快速审计说明
 - 保留并延续当前的双标签页审计模型，也就是同时检查 **Field** 和 **FAE** 两个标签页
 - 明确要求汇报结果区分缺失项来自 Field 标签页还是 FAE 标签页
 

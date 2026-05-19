@@ -1,11 +1,36 @@
 ---
 name: jira-fae-tickets
-description: Inspect and update Jira tickets in Telechips TITAN using the browser tool, especially FAE tab handling for FAE_Label, FAE Pattern, and Comment, AND Field tab handling for O/S, Self Resolution, Cause(Customer), Hardware Issue Pattern, Software Issue Pattern, Labels, FAE Person, git/repo command, SDK Version (TITAN), and Ref. H/W version. Use when auditing another reporter's tickets for missing FAE or Field tab fields, or when editing your own reporter-filtered tickets to fill/update FAE content. Includes bilingual (English/Chinese) workflow notes, browser-login prerequisites, FAE label selection rules, Field tab checks, pagination handling, and safe differences between check-only mode and edit/update mode.
+description: Inspect and update Telechips TITAN Jira tickets on tcs.telechips.com, especially FAE tab handling for FAE_Label, FAE Pattern, and Comment, AND Field tab handling for O/S, Self Resolution, Cause (Customer), Hardware Issue Pattern, Software Issue Pattern, Labels, FAE Person, and git/repo command. Use when auditing TITAN_Customer tickets only (TANCS, TANCS4, TANCS5, TANCS6, TANCS7 prefixes) for missing FAE or Field tab fields, or when editing your own reporter-filtered tickets to fill/update FAE content. Includes bilingual workflow notes, project-scope guardrails, fixed customfield IDs, Jira REST API audit guidance, authentication options, browser-login prerequisites, FAE label selection rules, and safe differences between check-only mode and edit/update mode.
 ---
 
 # Jira FAE Tickets
 
-Handle Telechips TITAN Jira tickets through the browser tool.
+Handle Telechips TITAN Jira tickets through the browser tool or Jira REST API.
+
+## System & Scope (READ THIS FIRST) / 系统与范围（请先读）
+
+**TCS and TITAN are not two independent systems.** `tcs.telechips.com` is the Telechips Collaboration System domain where Jira is deployed. **TITAN** is the Jira instance/project context used inside that same system.
+
+**TCS 和 TITAN 不是两个独立系统。** `tcs.telechips.com` 是部署 Jira 的 Telechips Collaboration System 域名，**TITAN** 是其中的 Jira 实例/项目上下文。
+
+Audit scope is restricted to **TITAN_Customer** tickets only:
+
+- Include ticket prefixes: `TANCS-`, `TANCS4-`, `TANCS5-`, `TANCS6-`, `TANCS7-`
+- Skip other projects/prefixes such as `TMRCR-*`, `TMCF-*`, `TPCP-*`, `IM*`, `IS*`, `IG*`, etc.
+- Reason: those other projects do not have the target **FAE** tab and are outside this skill's audit scope.
+
+审计范围只限 **TITAN_Customer** 票：
+
+- 包含票号前缀：`TANCS-`、`TANCS4-`、`TANCS5-`、`TANCS6-`、`TANCS7-`
+- 跳过其他项目/前缀，例如 `TMRCR-*`、`TMCF-*`、`TPCP-*`、`IM*`、`IS*`、`IG*` 等
+- 原因：这些项目没有目标 **FAE** 标签页，不属于本 skill 审计范围
+
+### Common pitfalls / 常见错误
+
+1. Do **not** treat TCS and TITAN as separate systems; use `https://tcs.telechips.com/`.
+2. Do **not** audit non-TITAN_Customer tickets; filter or skip everything outside `TANCS*`.
+3. Do **not** audit fields outside the defined FAE/Field tab scope. In particular, do not check `SDK Version (TITAN)` or `Ref. H/W version`.
+4. Do **not** click through tickets one by one for large audits. Use Jira REST API search in 50-ticket pages.
 
 ## Startup URL and opening flow / 固定入口与打开流程
 
@@ -51,34 +76,31 @@ Before doing anything, ensure all of the following are true:
 
 Use this when the JQL reporter is changed to another person and the user only wants an audit.
 
-For large audits across many tickets/pages, prefer creating an independent sub-task/sub-agent to run the inspection continuously, while the main session only tracks progress and reports results. For audit-only work, prefer a high-efficiency read-only method when available instead of slow human-like ticket-by-ticket visible clicking.
+For large audits across many tickets/pages, prefer a high-efficiency read-only method. Do not use slow human-like ticket-by-ticket visible clicking unless the REST API is unavailable and the user explicitly accepts the slowdown.
 
 **Preferred method: Jira REST API (when Chrome extension session is active)**
 
-When the user's Chrome session is already authenticated to TITAN, prefer calling the Jira REST API directly for bulk read-only audits instead of browser-clicking through tickets. This is dramatically faster and more reliable. See the "API-based audit method" section below.
+When the user's Chrome session is already authenticated to TITAN on `tcs.telechips.com`, prefer calling the Jira REST API directly for bulk read-only audits instead of browser-clicking through tickets. This is dramatically faster and more reliable: roughly 200 tickets need only 4 API calls (`maxResults=50`) and usually finish in seconds. See the "API-based audit method" section below.
 
 If the task is check-only:
 
 - Open the filtered issue list.
-- For large multi-page audits, prefer spawning a dedicated sub-task/sub-agent, or using the REST API method.
+- For large multi-page audits, use the REST API method.
 - When possible, use a high-efficiency authenticated audit method for read-only inspection instead of slow human-like browser clicking.
-- Inspect tickets page by page.
+- Restrict the result set to TITAN_Customer tickets or skip non-matching issue keys after fetch.
 - For each ticket, check **both** the Field tab AND the FAE tab fields (see sections below).
 - Record the ticket key if any required field is empty.
-- Treat `SDK Version (TITAN): None` and `Ref. H/W version: None` as missing.
-- Click **Cancel** after inspecting (browser mode only).
-- Continue through pagination until all pages are checked.
+- Continue REST pagination until all results are checked.
 - Return only the missing ticket keys and which fields are empty or set to `None`.
 
 当切换到别的 reporter、只想检查时：
 
 - 打开筛选后的票列表。
-- 按页检查，或优先使用 REST API 批量审计。
+- 使用 REST API 批量审计。
+- 只审计 TITAN_Customer 票，或在获取后跳过不符合前缀的票号。
 - 对每一张票，同时检查 FAE 标签页和 Field 标签页字段。
 - 只要有任一项为空，就记下票号和缺失字段名。
-- `SDK Version (TITAN): None` 和 `Ref. H/W version: None` 也视为缺失。
-- 点击 **Cancel**（浏览器模式）。
-- 翻页继续，直到所有页面检查完成。
+- REST 分页直到所有结果检查完成。
 - 最终只汇报缺项票号，以及缺的是哪些字段。
 
 ### 2) Edit/update mode / 修改更新模式
@@ -135,24 +157,26 @@ The **Field** tab (also called the "Field Tab" or general fields area) contains 
 
 ### Fields to check in Field Tab / 需检查的字段
 
-Check all 10 of the following fields for empty/None value:
+Check all 8 of the following fields for empty/None value:
 
 | Field Name | Description / 说明 | Empty condition |
 |---|---|---|
 | `O/S` | Operating System / 操作系统 | null, empty string, or "None" |
 | `Self Resolution` | Whether FAE resolved autonomously / 自主解决情况 | null, empty string, or "None" |
-| `Cause(Customer)` | Customer-side root cause category / 客户原因分类 | null, empty string, or "None" |
+| `Cause (Customer)` | Customer-side root cause category / 客户原因分类 | null, empty string, or "None" |
 | `Hardware Issue Pattern` | Hardware failure pattern / 硬件问题模式 | null, empty string, or "None" |
 | `Software Issue Pattern` | Software failure pattern (first field only) / 软件问题模式（只检查第一个） | null, empty string, or "None" |
 | `Labels` | Jira labels / 标签 | empty array or no labels |
 | `FAE Person` | Responsible FAE engineer / 负责 FAE | null, empty string, or "None" |
 | `git/repo command` | Git/Repo command reference / Git/Repo 命令 | null, empty string, or "None" |
-| `SDK Version (TITAN)` | TITAN SDK version / TITAN SDK 版本 | null, empty string, or "None" |
-| `Ref. H/W version` | Reference hardware version / 参考硬件版本 | null, empty string, or "None" |
 
 **Important for Software Issue Pattern:** If there are multiple Software Issue Pattern fields in the Field tab, only check the **first** one. Ignore subsequent instances.
 
 **Software Issue Pattern 注意：** 如果 Field 标签页中有多个 Software Issue Pattern 字段，只检查**第一个**，忽略其余的。
+
+Do **not** audit fields outside this scope, including `SDK Version (TITAN)` and `Ref. H/W version`.
+
+不要审计范围外字段，包括 `SDK Version (TITAN)` 和 `Ref. H/W version`。
 
 ### Browser-click method for Field Tab / 浏览器点击检查方法
 
@@ -160,7 +184,7 @@ When inspecting via browser:
 
 1. Open the ticket in edit mode (click **Edit**).
 2. Click the **Field** tab (not the FAE tab).
-3. Check each of the 10 fields listed above.
+3. Check each of the 8 Field tab fields listed above.
 4. Record any that are empty/None.
 5. Then switch to the **FAE** tab and check FAE fields (see FAE section below).
 6. Click **Cancel** when done.
@@ -176,31 +200,48 @@ When inspecting via browser:
 
 ### API-based audit method for Field Tab / REST API 批量检查方法
 
-When using the Jira REST API for bulk auditing, fetch all required fields in a single call per page:
+When using the Jira REST API for bulk auditing, fetch all required fields in a single call per page. This is the default method for check-only audits:
 
 ```
-GET /rest/api/2/search?jql=<JQL>&fields=customfield_XXXXX,labels,...&maxResults=50&startAt=0
+GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&maxResults=50&startAt=<offset>
 ```
 
-**Field-to-customfield mapping (verify in TITAN before use):**
+### Fixed field ID mapping / 固定字段 ID 映射
 
-The custom field IDs for TITAN must be confirmed by first calling:
+Use this mapping for TITAN_Customer audits:
 
-```
-GET /rest/api/2/field
-```
+#### FAE Tab
 
-Look for fields matching these names (case-insensitive):
-- `O/S` → find the matching `customfield_XXXXX`
-- `Self Resolution` → find the matching `customfield_XXXXX`
-- `Cause(Customer)` → find the matching `customfield_XXXXX`
-- `Hardware Issue Pattern` → find the matching `customfield_XXXXX`
-- `Software Issue Pattern` → find the matching `customfield_XXXXX` (take the first one if multiple)
-- `Labels` → standard field, use `labels`
-- `FAE Person` → find the matching `customfield_XXXXX`
-- `git/repo command` → find the matching `customfield_XXXXX`
-- `SDK Version (TITAN)` → find the matching `customfield_XXXXX`
-- `Ref. H/W version` → find the matching `customfield_XXXXX`
+| Field | customfield_id | Type | Empty condition |
+|---|---|---|---|
+| `FAE_Label` | `customfield_15300` | array | null or `[]` |
+| `FAE Pattern` | `customfield_15200` | option | null |
+| `Comment` | `comment` | array | `comment.comments.length === 0` |
+
+#### Field Tab
+
+| Field | customfield_id | Type | Empty condition |
+|---|---|---|---|
+| `O/S` | `customfield_10684` | option | null or `value === 'None'` |
+| `Self Resolution` | `customfield_15009` | option | null or `value === 'None'` |
+| `Cause (Customer)` | `customfield_15044` | option | null or `value === 'None'` |
+| `Hardware Issue Pattern` | `customfield_15045` | option | null or `value === 'None'` |
+| `Software Issue Pattern` | `customfield_15046` | option (first dropdown only) | null or `value === 'None'` |
+| `Labels` | `labels` | array | `[]` |
+| `FAE Person` | `customfield_15100` | user/string | null or empty string |
+| `git/repo command` | `customfield_15101` | string | null or empty string |
+
+Note: Jira metadata contains two fields named `git/repo command` (`customfield_15008` and `customfield_15101`). The Field tab uses `customfield_15101`.
+
+注意：Jira metadata 中有两个字段都叫 `git/repo command`（`customfield_15008` 和 `customfield_15101`），Field 标签页实际显示的是 `customfield_15101`。
+
+### Authentication / 认证方式
+
+The Jira REST API requires a logged-in session. Use one of these methods:
+
+1. **Browser Console (simplest):** open DevTools on `https://tcs.telechips.com`, paste the script below, and the browser automatically sends cookies.
+2. **Personal Access Token (PAT):** use it if TITAN supports PAT authentication.
+3. **JSESSIONID cookie:** copy from DevTools and send as a Cookie header, for example `export JIRA_COOKIE='JSESSIONID=...'`.
 
 **Empty detection logic:**
 
@@ -223,6 +264,56 @@ function isBlank(val) {
 startAt=0, maxResults=50  → page 1
 startAt=50, maxResults=50 → page 2
 ...continue until startAt >= total
+```
+
+### Browser Console audit script / 浏览器 Console 审计脚本
+
+Run this from the DevTools Console on `https://tcs.telechips.com`:
+
+```javascript
+(async () => {
+  const jql = encodeURIComponent('created >= 2025-01-01 AND reporter in ("user@telechips.com") order by created DESC');
+  const fields = [
+    'summary',
+    'customfield_10684', 'customfield_15009', 'customfield_15044',
+    'customfield_15045', 'customfield_15046', 'labels',
+    'customfield_15100', 'customfield_15101',
+    'customfield_15200', 'customfield_15300', 'comment'
+  ].join(',');
+
+  const INCLUDED_PREFIXES = ['TANCS', 'TANCS4', 'TANCS5', 'TANCS6', 'TANCS7'];
+  let allIssues = [], startAt = 0;
+  while (true) {
+    const resp = await fetch(`/rest/api/2/search?jql=${jql}&fields=${fields}&maxResults=50&startAt=${startAt}`);
+    const data = await resp.json();
+    allIssues = allIssues.concat(data.issues);
+    if (allIssues.length >= data.total) break;
+    startAt += 50;
+  }
+
+  const missing = [];
+  for (const issue of allIssues) {
+    const prefix = issue.key.split('-')[0];
+    if (!INCLUDED_PREFIXES.includes(prefix)) continue;
+    const f = issue.fields;
+    const m = [];
+    if (!f.customfield_10684 || f.customfield_10684.value === 'None') m.push('O/S');
+    if (!f.customfield_15009 || f.customfield_15009.value === 'None') m.push('Self Resolution');
+    if (!f.customfield_15044 || f.customfield_15044.value === 'None') m.push('Cause (Customer)');
+    if (!f.customfield_15045 || f.customfield_15045.value === 'None') m.push('Hardware Issue Pattern');
+    if (!f.customfield_15046 || f.customfield_15046.value === 'None') m.push('Software Issue Pattern');
+    if (!f.labels || f.labels.length === 0) m.push('Labels');
+    if (!f.customfield_15100) m.push('FAE Person');
+    if (!f.customfield_15101) m.push('git/repo command');
+    if (!f.customfield_15300 || f.customfield_15300.length === 0) m.push('FAE_Label');
+    if (!f.customfield_15200) m.push('FAE Pattern');
+    if (!f.comment || f.comment.comments.length === 0) m.push('Comment (FAE Tab)');
+    if (m.length > 0) missing.push({ key: issue.key, summary: f.summary, missing: m });
+  }
+  console.log(`Total: ${allIssues.length}, Missing: ${missing.length}`);
+  console.table(missing);
+  return missing;
+})();
 ```
 
 ---
@@ -289,10 +380,9 @@ When performing a full audit (both FAE tab + Field tab), follow this sequence pe
 For each ticket:
   1. Open Edit mode
   2. → Click "Field" tab
-     Check: O/S, Self Resolution, Cause(Customer),
+     Check: O/S, Self Resolution, Cause (Customer),
             Hardware Issue Pattern, Software Issue Pattern (1st only),
-            Labels, FAE Person, git/repo command,
-            SDK Version (TITAN), Ref. H/W version
+            Labels, FAE Person, git/repo command
      Record any empty fields or fields set to None
   3. → Click "FAE" tab
      Check: FAE_Label, FAE Pattern, Comment
@@ -307,10 +397,9 @@ For each ticket:
 对每张票：
   1. 进入 Edit 模式
   2. → 点击 "Field" 标签页
-     检查：O/S、Self Resolution、Cause(Customer)、
+     检查：O/S、Self Resolution、Cause (Customer)、
            Hardware Issue Pattern、Software Issue Pattern（只检查第一个）、
-           Labels、FAE Person、git/repo command、
-           SDK Version (TITAN)、Ref. H/W version
+           Labels、FAE Person、git/repo command
      记录空值字段，以及值为 None 的字段
   3. → 点击 "FAE" 标签页
      检查：FAE_Label、FAE Pattern、Comment
@@ -373,8 +462,8 @@ Tickets with Missing Fields: 15
 Total Missing Field Entries: 38
 
 --- Non-Compliant Tickets ---
-TANCS5-101 | Field: O/S, Labels, SDK Version (TITAN) | FAE: FAE_Label | Total: 4
-TANCS5-88  | Field: Self Resolution, FAE Person, Ref. H/W version | FAE: — | Total: 3
+TANCS5-101 | Field: O/S, Labels, git/repo command | FAE: FAE_Label | Total: 4
+TANCS5-88  | Field: Self Resolution, FAE Person | FAE: Comment | Total: 3
 ...
 
 --- Skipped (no FAE tab): TANCS5-77, TANCS5-55

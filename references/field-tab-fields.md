@@ -1,8 +1,13 @@
 # Field Tab — Custom Field ID Lookup Guide
 
-This file explains how to find the correct Jira custom field IDs for the 10 Field Tab fields
-that must be audited in TITAN. Custom field IDs differ per Jira instance and must be verified
-before running API-based audits.
+This file explains the correct Jira custom field IDs for the 8 Field Tab fields
+that must be audited in TITAN_Customer. TCS (`tcs.telechips.com`) is the Jira
+deployment domain and TITAN is the Jira instance/context; treat them as the same
+system for this skill.
+
+Only audit TITAN_Customer tickets: `TANCS-*`, `TANCS4-*`, `TANCS5-*`,
+`TANCS6-*`, and `TANCS7-*`. Skip other projects such as `TMRCR-*`, `TMCF-*`,
+`TPCP-*`, `IM*`, `IS*`, and `IG*`.
 
 ## Step 1: Fetch all fields from TITAN
 
@@ -33,14 +38,14 @@ Search the returned array for entries where `name` matches (case-insensitive):
 |---|---|
 | `O/S` | May also appear as "OS" |
 | `Self Resolution` | Exact match |
-| `Cause(Customer)` | May include parentheses |
+| `Cause (Customer)` | Customer cause classification |
 | `Hardware Issue Pattern` | May be abbreviated |
-| `Software Issue Pattern` | If multiple, take the one with the **lowest** customId (first defined) |
+| `Software Issue Pattern` | Audit only the first dropdown: `customfield_15046` |
 | `Labels` | This is a standard built-in field — use `labels` directly, no customfield ID needed |
 | `FAE Person` | May appear as "FAE_Person" or similar |
-| `git/repo command` | May include slash or be hyphenated |
-| `SDK Version (TITAN)` | TITAN SDK version field |
-| `Ref. H/W version` | Reference hardware version field |
+| `git/repo command` | Use `customfield_15101`; metadata also contains `customfield_15008` with the same name |
+
+Do not audit `SDK Version (TITAN)`, `Ref. H/W version`, or any other fields outside the scope above.
 
 ## Step 3: Note the IDs
 
@@ -49,13 +54,14 @@ Record the `id` value (e.g. `customfield_10400`) for each field. Use these IDs i
 
 ## Step 4: Example search API call
 
-Once you have the IDs, use them like this (replace the customfield IDs with actual ones):
+Use the known TITAN_Customer IDs like this:
 
 ```
 GET /rest/api/2/search
   ?jql=created >= 2025-01-01 AND reporter in ("zyzhong@telechips.com") ORDER BY created DESC
-  &fields=customfield_10400,customfield_10401,customfield_10402,customfield_10403,
-          customfield_10404,labels,customfield_10405,customfield_10406
+  &fields=summary,customfield_10684,customfield_15009,customfield_15044,
+          customfield_15045,customfield_15046,labels,customfield_15100,
+          customfield_15101,customfield_15200,customfield_15300,comment
   &maxResults=50
   &startAt=0
 ```
@@ -72,21 +78,27 @@ Different field types serialize differently in the API response:
 | Labels (built-in) | `[]` |
 | User picker | `null` |
 
-Use the `isBlank()` function defined in SKILL.md to normalize all of these to a simple true/false.
+Use the empty-value rules in `SKILL.md` to normalize all of these to a simple true/false.
 
-## Known TITAN field IDs (update as discovered)
+## Known TITAN_Customer field IDs
 
-> Fill in as you confirm IDs by running the /field API call.
+### FAE Tab
 
-| Field | Confirmed customfield ID | Type |
-|---|---|---|
-| O/S | TBD | single select |
-| Self Resolution | TBD | single select |
-| Cause(Customer) | TBD | single select |
-| Hardware Issue Pattern | TBD | single select |
-| Software Issue Pattern | TBD | single select |
-| Labels | `labels` (built-in) | label array |
-| FAE Person | TBD | user picker |
-| git/repo command | TBD | text |
-| SDK Version (TITAN) | TBD | text or select |
-| Ref. H/W version | TBD | text or select |
+| Field | customfield ID | Type | Empty condition |
+|---|---|---|---|
+| FAE_Label | `customfield_15300` | array | null or `[]` |
+| FAE Pattern | `customfield_15200` | option | null |
+| Comment | `comment` | array | `comment.comments.length === 0` |
+
+### Field Tab
+
+| Field | customfield ID | Type | Empty condition |
+|---|---|---|---|
+| O/S | `customfield_10684` | single select | null or `value === 'None'` |
+| Self Resolution | `customfield_15009` | single select | null or `value === 'None'` |
+| Cause (Customer) | `customfield_15044` | single select | null or `value === 'None'` |
+| Hardware Issue Pattern | `customfield_15045` | single select | null or `value === 'None'` |
+| Software Issue Pattern | `customfield_15046` | single select, first dropdown only | null or `value === 'None'` |
+| Labels | `labels` (built-in) | label array | `[]` |
+| FAE Person | `customfield_15100` | user picker or string | null or empty string |
+| git/repo command | `customfield_15101` | text | null or empty string |
