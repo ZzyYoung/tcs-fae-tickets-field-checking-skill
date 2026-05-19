@@ -36,6 +36,30 @@
 
 ## 常用 JQL
 
+**FAE 标签页缺失字段：**
+```jql
+(FAE_Label = empty OR cf[15200] = empty OR cf[15201] IS EMPTY)
+AND created >= 2025-01-01
+AND reporter in ("user@telechips.com")
+ORDER BY created DESC
+```
+
+**Field 标签页缺失字段：**
+```jql
+(
+  cf[10684] IS EMPTY OR cf[10684] = None OR
+  cf[15009] IS EMPTY OR cf[15009] = None OR
+  cf[15044] IS EMPTY OR cf[15044] = None OR
+  cf[15045] IS EMPTY OR cf[15045] = None OR
+  cf[15046] IS EMPTY OR cf[15046] = None OR
+  cf[15100] IS EMPTY OR
+  cf[15101] IS EMPTY
+)
+AND created >= 2025-01-01
+AND reporter in ("user@telechips.com")
+ORDER BY created DESC
+```
+
 **按 reporter 和日期范围：**
 ```
 created >= 2025-01-01 AND created <= 2026-04-17 AND reporter in ("user@telechips.com") order by created DESC
@@ -72,7 +96,7 @@ GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&max
 必取字段：
 
 ```text
-summary,customfield_10684,customfield_15009,customfield_15044,customfield_15045,customfield_15046,customfield_15100,customfield_15101,customfield_15200,customfield_15300,comment
+summary,customfield_10684,customfield_15009,customfield_15044,customfield_15045,customfield_15046,customfield_15100,customfield_15101,customfield_15200,customfield_15201,customfield_15300
 ```
 
 认证方式：在 `tcs.telechips.com` 的浏览器 Console 执行、使用 PAT（如果支持）、或复制 `JSESSIONID` 作为 Cookie header。
@@ -125,6 +149,8 @@ summary,reporter,assignee,created,issuelinks
 - 大批量审计（50 张以上）时，优先使用 REST API 方式，比浏览器点击快得多。
 - 使用 `SKILL.md` 中的固定 customfield ID；只有怀疑 metadata 变化时才调用 `GET /rest/api/2/field` 复核。
 - Software Issue Pattern：如果存在多个同名字段，只检查**第一个**。
+- `Cause (Customer): None` 是缺失值；JQL 过滤必须包含 `cf[15044] = None`。
+- FAE Tab 的 `Comment` 是 `customfield_15201`，不是 Jira 系统评论。
 - Labels 是 Jira 内置字段，但字段完整性审查中忽略。
 - `git/repo command` 使用 `customfield_15101`，不要使用 metadata 中同名的 `customfield_15008`。
 - 中国 FAE 作为 Assignee 是合法的；总部 AE/R&D 作为 Assignee 也是合法的。

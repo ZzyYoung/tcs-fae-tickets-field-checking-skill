@@ -36,6 +36,30 @@ Do not audit Field Tab Labels, SDK Version (TITAN), Ref. H/W version, or other o
 
 ## Common JQL patterns
 
+**Missing FAE tab fields:**
+```jql
+(FAE_Label = empty OR cf[15200] = empty OR cf[15201] IS EMPTY)
+AND created >= 2025-01-01
+AND reporter in ("user@telechips.com")
+ORDER BY created DESC
+```
+
+**Missing Field tab fields:**
+```jql
+(
+  cf[10684] IS EMPTY OR cf[10684] = None OR
+  cf[15009] IS EMPTY OR cf[15009] = None OR
+  cf[15044] IS EMPTY OR cf[15044] = None OR
+  cf[15045] IS EMPTY OR cf[15045] = None OR
+  cf[15046] IS EMPTY OR cf[15046] = None OR
+  cf[15100] IS EMPTY OR
+  cf[15101] IS EMPTY
+)
+AND created >= 2025-01-01
+AND reporter in ("user@telechips.com")
+ORDER BY created DESC
+```
+
 **By reporter, date range:**
 ```
 created >= 2025-01-01 AND created <= 2026-04-17 AND reporter in ("user@telechips.com") order by created DESC
@@ -72,7 +96,7 @@ GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&max
 Required fields:
 
 ```text
-summary,customfield_10684,customfield_15009,customfield_15044,customfield_15045,customfield_15046,customfield_15100,customfield_15101,customfield_15200,customfield_15300,comment
+summary,customfield_10684,customfield_15009,customfield_15044,customfield_15045,customfield_15046,customfield_15100,customfield_15101,customfield_15200,customfield_15201,customfield_15300
 ```
 
 Authentication options: browser Console on `tcs.telechips.com`, PAT if supported, or a copied `JSESSIONID` Cookie header.
@@ -125,6 +149,8 @@ The audit report includes:
 - For large audits (50+ tickets), the REST API method is preferred over browser clicking.
 - Use the fixed customfield IDs in `SKILL.md`; call `GET /rest/api/2/field` only to verify metadata drift.
 - Software Issue Pattern: only the first field is audited if multiple exist.
+- `Cause (Customer): None` is missing; include `cf[15044] = None` in JQL filters.
+- FAE Tab `Comment` is `customfield_15201`, not Jira system comments.
 - Labels is a built-in Jira field, but it is ignored for Field Tab completeness audits.
 - `git/repo command`: use `customfield_15101`, not the duplicate metadata field `customfield_15008`.
 - China FAE as Assignee is valid; headquarters AE/R&D as Assignee is valid.

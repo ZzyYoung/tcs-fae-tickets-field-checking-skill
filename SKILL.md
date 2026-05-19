@@ -246,6 +246,41 @@ When using the Jira REST API for bulk auditing, fetch all required fields in a s
 GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&maxResults=50&startAt=<offset>
 ```
 
+### JQL pre-filter for missing values / 用 JQL 预筛选缺失值
+
+For faster field-completeness audits, first use Jira JQL to export only tickets with missing or `None` values. Do not rely only on browser-visible inspection.
+
+For option fields, treat both `IS EMPTY` and `= None` as missing. For text fields, use `IS EMPTY`. Always keep the normal reporter/date/scope filters.
+
+Example for FAE Tab:
+
+```jql
+(FAE_Label = empty OR cf[15200] = empty OR cf[15201] IS EMPTY)
+AND created >= 2025-01-01
+AND created <= 2026-03-27
+AND reporter in ("shzhzeng@telechips.com")
+ORDER BY created DESC
+```
+
+Example for Field Tab:
+
+```jql
+(
+  cf[10684] IS EMPTY OR cf[10684] = None OR
+  cf[15009] IS EMPTY OR cf[15009] = None OR
+  cf[15044] IS EMPTY OR cf[15044] = None OR
+  cf[15045] IS EMPTY OR cf[15045] = None OR
+  cf[15046] IS EMPTY OR cf[15046] = None OR
+  cf[15100] IS EMPTY OR
+  cf[15101] IS EMPTY
+)
+AND created >= 2025-01-01
+AND reporter in ("user@telechips.com")
+ORDER BY created DESC
+```
+
+`cf[15044] = None` is important: a ticket such as `TANCS-4418` with `Cause (Customer): None` must be reported as missing.
+
 ### Fixed field ID mapping / 固定字段 ID 映射
 
 Use this mapping for customer-scope audits (`TANCS*` plus `TMRCR`):
@@ -256,7 +291,7 @@ Use this mapping for customer-scope audits (`TANCS*` plus `TMRCR`):
 |---|---|---|---|
 | `FAE_Label` | `customfield_15300` | array | null or `[]` |
 | `FAE Pattern` | `customfield_15200` | option | null |
-| `Comment` | `comment` | array | `comment.comments.length === 0` |
+| `Comment` | `customfield_15201` | textarea/string | null or `''` |
 
 #### Field Tab
 
@@ -320,7 +355,7 @@ Run this from the DevTools Console on `https://tcs.telechips.com`:
     'customfield_10684', 'customfield_15009', 'customfield_15044',
     'customfield_15045', 'customfield_15046',
     'customfield_15100', 'customfield_15101',
-    'customfield_15200', 'customfield_15300', 'comment'
+    'customfield_15200', 'customfield_15201', 'customfield_15300'
   ].join(',');
 
   const isIncludedIssue = key => {
@@ -350,7 +385,7 @@ Run this from the DevTools Console on `https://tcs.telechips.com`:
     if (!f.customfield_15101) m.push('git/repo command');
     if (!f.customfield_15300 || f.customfield_15300.length === 0) m.push('FAE_Label');
     if (!f.customfield_15200) m.push('FAE Pattern');
-    if (!f.comment || f.comment.comments.length === 0) m.push('Comment (FAE Tab)');
+    if (!f.customfield_15201) m.push('Comment (FAE Tab)');
     if (m.length > 0) missing.push({ key: issue.key, summary: f.summary, missing: m });
   }
   console.log(`Total: ${allIssues.length}, Missing: ${missing.length}`);

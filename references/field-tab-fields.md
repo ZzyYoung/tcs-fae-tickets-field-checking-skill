@@ -61,10 +61,34 @@ GET /rest/api/2/search
   ?jql=created >= 2025-01-01 AND reporter in ("zyzhong@telechips.com") ORDER BY created DESC
   &fields=summary,customfield_10684,customfield_15009,customfield_15044,
           customfield_15045,customfield_15046,customfield_15100,
-          customfield_15101,customfield_15200,customfield_15300,comment
+          customfield_15101,customfield_15200,customfield_15201,customfield_15300
   &maxResults=50
   &startAt=0
 ```
+
+## Step 4a: JQL pre-filter for missing values
+
+Use Jira JQL to export only likely-missing tickets when possible. Option fields must check both empty and `None`:
+
+```jql
+(
+  cf[10684] IS EMPTY OR cf[10684] = None OR
+  cf[15009] IS EMPTY OR cf[15009] = None OR
+  cf[15044] IS EMPTY OR cf[15044] = None OR
+  cf[15045] IS EMPTY OR cf[15045] = None OR
+  cf[15046] IS EMPTY OR cf[15046] = None OR
+  cf[15100] IS EMPTY OR
+  cf[15101] IS EMPTY OR
+  FAE_Label = empty OR
+  cf[15200] = empty OR
+  cf[15201] IS EMPTY
+)
+AND created >= 2025-01-01
+AND reporter in ("user@telechips.com")
+ORDER BY created DESC
+```
+
+Do not miss `cf[15044] = None`; `Cause (Customer): None` is a missing value.
 
 ## Step 5: Empty value detection per field type
 
@@ -87,7 +111,7 @@ Use the empty-value rules in `SKILL.md` to normalize all of these to a simple tr
 |---|---|---|---|
 | FAE_Label | `customfield_15300` | array | null or `[]` |
 | FAE Pattern | `customfield_15200` | option | null |
-| Comment | `comment` | array | `comment.comments.length === 0` |
+| Comment | `customfield_15201` | textarea/string | null or `""` |
 
 ### Field Tab
 

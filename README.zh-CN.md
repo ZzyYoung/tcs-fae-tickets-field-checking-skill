@@ -74,7 +74,7 @@
 |---|---|---|---|
 | `FAE_Label` | `customfield_15300` | array | null 或 `[]` |
 | `FAE Pattern` | `customfield_15200` | option | null |
-| `Comment` | `comment` | array | `comment.comments.length === 0` |
+| `Comment` | `customfield_15201` | textarea/string | null 或 `''` |
 
 ### Field 标签页
 
@@ -150,6 +150,8 @@ GET /rest/api/2/issue/<linked-issue-key>?fields=assignee,summary
 ```text
 GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&maxResults=50&startAt=<offset>
 ```
+
+为了更快导出缺失字段，可以先用 JQL 预筛选。option 字段必须同时检查 `IS EMPTY` 和 `= None`，例如 `Cause (Customer)` 使用 `cf[15044] IS EMPTY OR cf[15044] = None`。FAE Tab 的 `Comment` 是 `customfield_15201`，应使用 `cf[15201] IS EMPTY`，不要用 Jira 系统评论字段。
 
 认证方式：
 

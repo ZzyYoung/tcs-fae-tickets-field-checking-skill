@@ -76,7 +76,7 @@ Do not audit Field Tab `Labels`, `SDK Version (TITAN)`, `Ref. H/W version`, or o
 |---|---|---|---|
 | `FAE_Label` | `customfield_15300` | array | null or `[]` |
 | `FAE Pattern` | `customfield_15200` | option | null |
-| `Comment` | `comment` | array | `comment.comments.length === 0` |
+| `Comment` | `customfield_15201` | textarea/string | null or `''` |
 
 ### Field tab
 
@@ -152,6 +152,8 @@ Use the Jira search API for bulk read-only audits:
 ```text
 GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&maxResults=50&startAt=<offset>
 ```
+
+For faster missing-field exports, use JQL pre-filters. Option fields must include both `IS EMPTY` and `= None`; for example `cf[15044] IS EMPTY OR cf[15044] = None` for `Cause (Customer)`. FAE Tab `Comment` is `customfield_15201`, so use `cf[15201] IS EMPTY`, not Jira system comments.
 
 Authentication options:
 
