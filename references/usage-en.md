@@ -4,9 +4,10 @@
 
 1. Ensure Chrome is open and TITAN is logged in.
 2. Provide the JQL for the audit (reporter, date range).
-3. Tell Claude whether this is **check-only** or **edit/update** mode.
-4. For check-only: Claude will audit both the Field tab AND the FAE tab.
-5. For edit/update: Claude will only update FAE tab fields (as instructed).
+3. Tell Claude whether this is field completeness audit, Reporter/Assignee correction audit, or edit/update mode.
+4. For field completeness: Claude will audit both the Field tab AND the FAE tab, excluding Field Tab Labels.
+5. For Reporter/Assignee correction: Claude will scan the whole TITAN_Customer project for TITAN system account leftovers.
+6. For edit/update: Claude will only update FAE tab fields (as instructed).
 
 ## System and project scope
 
@@ -17,17 +18,16 @@
 
 ## Audit scope
 
-### Field Tab (8 fields)
+### Field Tab (7 checked fields)
 - O/S
 - Self Resolution
 - Cause (Customer)
 - Hardware Issue Pattern
 - Software Issue Pattern (first field only)
-- Labels
 - FAE Person
 - git/repo command
 
-Do not audit SDK Version (TITAN), Ref. H/W version, or other out-of-scope fields.
+Do not audit Field Tab Labels, SDK Version (TITAN), Ref. H/W version, or other out-of-scope fields.
 
 ### FAE Tab (3 fields)
 - FAE_Label
@@ -53,6 +53,14 @@ project = TANCS5 AND created >= 2025-01-01 AND reporter in ("user@telechips.com"
 
 If the JQL is broad, still filter the fetched results to the included TITAN_Customer prefixes before reporting.
 
+**Reporter/Assignee correction audit:**
+```jql
+project = TITAN_Customer
+AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
+AND created >= 2025-01-01
+ORDER BY created DESC
+```
+
 ## REST API quick audit
 
 Use:
@@ -64,20 +72,34 @@ GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&max
 Required fields:
 
 ```text
-summary,customfield_10684,customfield_15009,customfield_15044,customfield_15045,customfield_15046,labels,customfield_15100,customfield_15101,customfield_15200,customfield_15300,comment
+summary,customfield_10684,customfield_15009,customfield_15044,customfield_15045,customfield_15046,customfield_15100,customfield_15101,customfield_15200,customfield_15300,comment
 ```
 
 Authentication options: browser Console on `tcs.telechips.com`, PAT if supported, or a copied `JSESSIONID` Cookie header.
 
+For Reporter/Assignee correction audits, fetch:
+
+```text
+summary,reporter,assignee,created
+```
+
 ## Audit modes
 
-### Check-only (recommended for auditing another person's tickets)
+### Field completeness audit (recommended for auditing another person's tickets)
 - Claude inspects tickets without modifying them.
 - Both Field tab and FAE tab fields are checked.
+- Field Tab Labels is ignored.
 - Results are returned as a structured report.
 - For large multi-page audits, prefer the REST API.
 - Skip tickets outside TITAN_Customer scope or with no FAE tab.
 - Record ticket key plus all missing fields.
+
+### Reporter/Assignee correction audit
+- Claude inspects tickets without modifying them.
+- Use the reverse-filter JQL above and scan all TITAN_Customer tickets at once.
+- Reporter should be one of the 9 China FAE members; `titan` is HIGH severity and any other non-China-FAE reporter is MEDIUM severity.
+- Assignee may be headquarters AE/R&D or China FAE; only `titan` is HIGH severity and null/unassigned is MEDIUM severity.
+- Match usernames case-insensitively.
 
 ### Edit/update (only for your own tickets or with explicit permission)
 - Claude modifies FAE tab fields only.
@@ -92,6 +114,7 @@ Authentication options: browser Console on `tcs.telechips.com`, PAT if supported
 The audit report includes:
 - Summary counts
 - Per-ticket breakdown of missing fields (Field tab vs FAE tab)
+- Reporter/Assignee severity counts when that audit mode is used
 - List of skipped tickets (outside scope or no FAE tab)
 
 ## Tips
@@ -99,8 +122,10 @@ The audit report includes:
 - For large audits (50+ tickets), the REST API method is preferred over browser clicking.
 - Use the fixed customfield IDs in `SKILL.md`; call `GET /rest/api/2/field` only to verify metadata drift.
 - Software Issue Pattern: only the first field is audited if multiple exist.
-- Labels is a built-in Jira field and does not need a customfield ID.
+- Labels is a built-in Jira field, but it is ignored for Field Tab completeness audits.
 - `git/repo command`: use `customfield_15101`, not the duplicate metadata field `customfield_15008`.
+- China FAE as Assignee is valid; headquarters AE/R&D as Assignee is valid.
+- Assignee empty/null is non-compliant.
 - `safellink`: only for TCC5110 and SDM related tickets.
 - `CarPlay`: for CarPlay related issues.
 - `notification`: for notice/announcement tickets when creating a new label.

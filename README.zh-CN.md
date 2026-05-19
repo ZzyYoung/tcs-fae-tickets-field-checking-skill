@@ -1,6 +1,6 @@
 # Titan FAE Tickets Field Checking Skill
 
-这是一个用于 Telechips TITAN Jira 票据审计与更新的 OpenClaw skill，目标系统是 `tcs.telechips.com`，覆盖 **FAE** 标签页和 **Field** 标签页。
+这是一个用于 Telechips TITAN Jira 票据审计与更新的 OpenClaw skill，目标系统是 `tcs.telechips.com`，覆盖 **FAE** 标签页字段、**Field** 标签页字段，以及 Reporter/Assignee 修正状态。
 
 ## 系统与范围
 
@@ -11,19 +11,42 @@
 
 ## 这个 skill 做什么
 
-它主要支持两类场景：
+它主要支持两种审查模式和一种修改场景：
 
-1. **只检查审计模式**
+1. **字段完整性审查**
    - 检查别人 reporter 名下的 Jira 票
    - 同时检查 **FAE** 标签页和 **Field** 标签页字段
    - 最终只返回票号和缺失字段
+   - 忽略 Field 标签页 `Labels`
    - 大批量检查时优先使用高效率只读检查方式
 
-2. **修改更新模式**
+2. **Reporter/Assignee 修正审查**
+   - 一次扫描整个 `TITAN_Customer` 项目
+   - 找出 Reporter 或 Assignee 仍是 TITAN 系统账号的票
+   - 找出 Assignee 为空的票
+   - 不按个人分组，因为问题票的 `reporter` 可能仍是 `titan`
+
+3. **修改更新模式**
    - 从 JQL 过滤结果中打开你自己的 Jira 票
    - 修改 FAE 相关内容前必须先进入 **FAE** 标签页
    - 安全填写或更新相关字段
    - 更新后保持浏览器会话不被破坏
+
+## Telechips Jira 工作流背景
+
+客户在 `https://tcs.telechips.com` 的 TITAN Jira 创建工单后，系统会在 `TITAN_Customer` 项目下自动创建对应票，通常是 `TANCS-xxxx`。
+
+自动创建的票默认 Reporter 和 Assignee 都是 TITAN 系统账号：
+
+- Username: `titan`
+- Email: `titan@telechips.com`
+
+这只是占位账号。中国 FAE 团队收到票后必须手动修正 Reporter 和 Assignee：
+
+- Reporter 在 99% 情况下应为中国 FAE 9 人之一。
+- Assignee 大多数情况下是总部 AE/R&D 工程师。
+- 少数情况下 Assignee 可以是中国 FAE 自己，表示 FAE 团队可直接处理。
+- Assignee 不能保留 TITAN，也不能为空。
 
 ## 覆盖字段
 
@@ -38,11 +61,10 @@
 - `Cause (Customer)`
 - `Hardware Issue Pattern`
 - `Software Issue Pattern`（只检查第一个）
-- `Labels`
 - `FAE Person`
 - `git/repo command`
 
-不要审计 `SDK Version (TITAN)`、`Ref. H/W version` 或上述列表之外的其他字段。
+不要审计 Field 标签页 `Labels`、`SDK Version (TITAN)`、`Ref. H/W version` 或上述列表之外的其他字段。
 
 ## 固定字段 ID 映射
 
@@ -63,11 +85,55 @@
 | `Cause (Customer)` | `customfield_15044` | option | null 或 `value === 'None'` |
 | `Hardware Issue Pattern` | `customfield_15045` | option | null 或 `value === 'None'` |
 | `Software Issue Pattern` | `customfield_15046` | option，仅第一个下拉框 | null 或 `value === 'None'` |
-| `Labels` | `labels` | array | `[]` |
+| `Labels` | `labels` | array | 忽略，不审计 |
 | `FAE Person` | `customfield_15100` | user/string | null 或 `''` |
 | `git/repo command` | `customfield_15101` | string | null 或 `''` |
 
+`Labels` 仅用于保留映射信息。字段完整性审查中不要获取它，也不要作为缺失项汇报。
+
 注意：Jira metadata 中有两个字段都叫 `git/repo command`（`customfield_15008` 和 `customfield_15101`），Field 标签页实际显示的是 `customfield_15101`。
+
+## Reporter/Assignee 修正审查
+
+使用这个 JQL 一次扫描所有候选问题票：
+
+```jql
+project = TITAN_Customer
+AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
+AND created >= 2025-01-01
+ORDER BY created DESC
+```
+
+获取字段：
+
+```text
+summary,reporter,assignee,created
+```
+
+判定规则：
+
+| 字段 | 期望值 | 不合规情况 | 严重程度 |
+|---|---|---|---|
+| Reporter | 中国 FAE 9 人之一 | 仍是 TITAN 系统账号 | 高 |
+| Reporter | 中国 FAE 9 人之一 | 非中国 FAE 的其他人 | 中 |
+| Assignee | 总部 AE/R&D 工程师或中国 FAE | 仍是 TITAN 系统账号 | 高 |
+| Assignee | 总部 AE/R&D 工程师或中国 FAE | 未分配 / null | 中 |
+
+中国 FAE 作为 Assignee 是合法的；总部 AE/R&D 作为 Assignee 也是合法的。Username 匹配必须大小写不敏感。
+
+### 中国 FAE 团队
+
+| Username | Display Name | Email |
+|---|---|---|
+| `williamTang` | William Tang | williamTang@telechips.com |
+| `hmyang` | HongMing Yang | hmyang@telechips.com |
+| `shzhzeng` | ShengZhou Zeng | shzhzeng@telechips.com |
+| `zyzhong` | ZhiYong Zhong | zyzhong@telechips.com |
+| `jingoust` | 박정진 (JJ PARK) | jingoust@telechips.com |
+| `Chris.Hsieh` | Chris Hsieh | Chris.Hsieh@telechips.com |
+| `richard.li` | Richard Li | richard.li@telechips.com |
+| `simon.sun` | Simon Sun | simon.sun@telechips.com |
+| `junkai.he` | Junkai He | junkai.he@telechips.com |
 
 ## REST API 审计
 
@@ -103,6 +169,7 @@ GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&max
 - 检查或修改 FAE 相关内容前，必须先点 **FAE**
 - 审计模式下，必须同时检查 **Field** 和 **FAE** 两个标签页
 - 审计结果必须限制在上面列出的 TITAN_Customer 票号前缀内
+- 不要把 Field 标签页 `Labels` 汇报为缺失
 - `FAE_Label` 是标签选择器，不是普通文本输入框
 - 创建或选择标签时，要等待候选项出现并选中目标项，再点击更新
 - 大批量只读检查时，优先使用 Jira REST API 分页方式，不逐张点击工单
@@ -124,13 +191,15 @@ GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&max
 - 总页数 / 总票数
 - 因不属于 TITAN_Customer 范围或没有 FAE 标签页而跳过的票
 - 任一标签页存在缺失字段的票
+- Reporter/Assignee 审查模式下的严重程度统计
 
 ## 最近更新
 
 - FAE 标签页维持 3 个字段：`FAE_Label`、`FAE Pattern`、`Comment`
-- Field 标签页范围限定为 8 个字段，并明确排除 `SDK Version (TITAN)` 和 `Ref. H/W version`
+- Field 标签页范围限定为 7 个检查字段，并明确排除 `Labels`、`SDK Version (TITAN)` 和 `Ref. H/W version`
 - 明确 TCS 和 TITAN 在本 skill 中指同一个 Jira 系统
 - 增加固定 customfield ID 映射和 REST API 快速审计说明
+- 增加 Reporter/Assignee 修正审查，用于找出仍使用 TITAN 系统账号的票
 - 保留并延续当前的双标签页审计模型，也就是同时检查 **Field** 和 **FAE** 两个标签页
 - 明确要求汇报结果区分缺失项来自 Field 标签页还是 FAE 标签页
 

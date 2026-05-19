@@ -2,7 +2,7 @@
 
 🌐 English | 🇨🇳 [中文说明](README.zh-CN.md)
 
-An OpenClaw skill for auditing and updating Telechips TITAN Jira tickets on `tcs.telechips.com`, covering both the **FAE** tab and the **Field** tab.
+An OpenClaw skill for auditing and updating Telechips TITAN Jira tickets on `tcs.telechips.com`, covering **FAE** tab fields, **Field** tab fields, and Reporter/Assignee correction status.
 
 ## System & scope
 
@@ -13,19 +13,42 @@ An OpenClaw skill for auditing and updating Telechips TITAN Jira tickets on `tcs
 
 ## What this skill does
 
-This skill supports two practical workflows:
+This skill supports two audit modes plus one edit workflow:
 
-1. **Check-only audit mode**
+1. **Field completeness audit**
    - Audit another reporter's Jira tickets
    - Check both **FAE** tab fields and **Field** tab fields
    - Return only ticket keys and the missing fields
+   - Ignore Field Tab `Labels`
    - Prefer high-efficiency read-only inspection for large audits
 
-2. **Edit/update mode**
+2. **Reporter/Assignee correction audit**
+   - Scan all `TITAN_Customer` tickets in one pass
+   - Find tickets whose Reporter or Assignee still uses the TITAN system account
+   - Find tickets with empty Assignee
+   - Do not group by reporter because problem tickets may still have `reporter = titan`
+
+3. **Edit/update mode**
    - Open your own Jira tickets from a filtered JQL result
    - Enter the **FAE** tab before editing FAE-related content
    - Fill or update relevant fields safely
    - Keep browser session intact after updates
+
+## Telechips Jira workflow context
+
+Customers create tickets in TITAN Jira at `https://tcs.telechips.com`. The system automatically creates matching tickets in the `TITAN_Customer` project, usually as `TANCS-xxxx`.
+
+Auto-created tickets default both Reporter and Assignee to the TITAN system account:
+
+- Username: `titan`
+- Email: `titan@telechips.com`
+
+This is only a placeholder account. China FAE team members must manually correct Reporter and Assignee:
+
+- Reporter should be one of the 9 China FAE members in about 99% of cases.
+- Assignee is usually a headquarters AE/R&D engineer.
+- Assignee may also be a China FAE member when the FAE team can handle the issue directly.
+- Assignee must not remain TITAN and must not be empty.
 
 ## Fields covered
 
@@ -40,11 +63,10 @@ This skill supports two practical workflows:
 - `Cause (Customer)`
 - `Hardware Issue Pattern`
 - `Software Issue Pattern` (first one only)
-- `Labels`
 - `FAE Person`
 - `git/repo command`
 
-Do not audit `SDK Version (TITAN)`, `Ref. H/W version`, or other fields outside the lists above.
+Do not audit Field Tab `Labels`, `SDK Version (TITAN)`, `Ref. H/W version`, or other fields outside the lists above.
 
 ## Fixed field ID mapping
 
@@ -65,11 +87,55 @@ Do not audit `SDK Version (TITAN)`, `Ref. H/W version`, or other fields outside 
 | `Cause (Customer)` | `customfield_15044` | option | null or `value === 'None'` |
 | `Hardware Issue Pattern` | `customfield_15045` | option | null or `value === 'None'` |
 | `Software Issue Pattern` | `customfield_15046` | option, first dropdown only | null or `value === 'None'` |
-| `Labels` | `labels` | array | `[]` |
+| `Labels` | `labels` | array | Ignored; do not audit |
 | `FAE Person` | `customfield_15100` | user/string | null or `''` |
 | `git/repo command` | `customfield_15101` | string | null or `''` |
 
+`Labels` is shown for mapping completeness only. Do not fetch it or report it as missing in Field Tab completeness audits.
+
 Note: Jira metadata contains two fields named `git/repo command` (`customfield_15008` and `customfield_15101`). The Field tab uses `customfield_15101`.
+
+## Reporter/Assignee correction audit
+
+Use this JQL to scan all problem candidates in one pass:
+
+```jql
+project = TITAN_Customer
+AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
+AND created >= 2025-01-01
+ORDER BY created DESC
+```
+
+Fetch fields:
+
+```text
+summary,reporter,assignee,created
+```
+
+Judgment rules:
+
+| Field | Expected value | Non-compliant case | Severity |
+|---|---|---|---|
+| Reporter | One of the 9 China FAE members | Still TITAN system account | HIGH |
+| Reporter | One of the 9 China FAE members | Another non-China-FAE user | MEDIUM |
+| Assignee | Headquarters AE/R&D engineer OR China FAE | Still TITAN system account | HIGH |
+| Assignee | Headquarters AE/R&D engineer OR China FAE | Unassigned / null | MEDIUM |
+
+China FAE assignee is valid; headquarters AE/R&D assignee is also valid. Match usernames case-insensitively.
+
+### China FAE team
+
+| Username | Display Name | Email |
+|---|---|---|
+| `williamTang` | William Tang | williamTang@telechips.com |
+| `hmyang` | HongMing Yang | hmyang@telechips.com |
+| `shzhzeng` | ShengZhou Zeng | shzhzeng@telechips.com |
+| `zyzhong` | ZhiYong Zhong | zyzhong@telechips.com |
+| `jingoust` | 박정진 (JJ PARK) | jingoust@telechips.com |
+| `Chris.Hsieh` | Chris Hsieh | Chris.Hsieh@telechips.com |
+| `richard.li` | Richard Li | richard.li@telechips.com |
+| `simon.sun` | Simon Sun | simon.sun@telechips.com |
+| `junkai.he` | Junkai He | junkai.he@telechips.com |
 
 ## REST API audit
 
@@ -105,6 +171,7 @@ Always start from:
 - Always click **FAE** before checking or editing FAE-related fields
 - In audit mode, inspect **both** the Field tab and the FAE tab
 - Restrict audit results to the TITAN_Customer ticket prefixes listed above
+- Do not report Field Tab `Labels` as missing
 - `FAE_Label` is a label picker, not plain text
 - When creating/selecting labels, wait for suggestions and select the intended item before updating
 - For large check-only audits, prefer Jira REST API paging over browser clicking
@@ -126,13 +193,15 @@ Recommended audit report includes:
 - Total pages / total tickets
 - Skipped tickets outside TITAN_Customer scope or with no FAE tab
 - Tickets with missing required fields in either tab
+- Reporter/Assignee audit severity counts when that mode is requested
 
 ## Recent updates
 
 - Kept FAE tab scope at 3 fields: `FAE_Label`, `FAE Pattern`, `Comment`
-- Restricted Field tab scope to 8 fields and explicitly excluded `SDK Version (TITAN)` and `Ref. H/W version`
+- Restricted Field tab scope to 7 checked fields and explicitly excluded `Labels`, `SDK Version (TITAN)`, and `Ref. H/W version`
 - Clarified that TCS and TITAN refer to the same Jira system for this skill
 - Added fixed customfield ID mapping and REST API guidance for fast audits
+- Added Reporter/Assignee correction audit for tickets still using the TITAN system account
 - Kept the newer dual-tab audit model, which checks both **Field** and **FAE** tabs
 - Clarified that reports should explicitly show whether missing items come from the Field tab or the FAE tab
 

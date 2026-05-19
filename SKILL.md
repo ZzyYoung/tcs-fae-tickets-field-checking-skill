@@ -1,6 +1,6 @@
 ---
 name: jira-fae-tickets
-description: Inspect and update Telechips TITAN Jira tickets on tcs.telechips.com, especially FAE tab handling for FAE_Label, FAE Pattern, and Comment, AND Field tab handling for O/S, Self Resolution, Cause (Customer), Hardware Issue Pattern, Software Issue Pattern, Labels, FAE Person, and git/repo command. Use when auditing TITAN_Customer tickets only (TANCS, TANCS4, TANCS5, TANCS6, TANCS7 prefixes) for missing FAE or Field tab fields, or when editing your own reporter-filtered tickets to fill/update FAE content. Includes bilingual workflow notes, project-scope guardrails, fixed customfield IDs, Jira REST API audit guidance, authentication options, browser-login prerequisites, FAE label selection rules, and safe differences between check-only mode and edit/update mode.
+description: Inspect and update Telechips TITAN Jira tickets on tcs.telechips.com, especially FAE tab handling for FAE_Label, FAE Pattern, and Comment, Field tab handling for O/S, Self Resolution, Cause (Customer), Hardware Issue Pattern, Software Issue Pattern, FAE Person, and git/repo command, and Reporter/Assignee correction audits for tickets still assigned to the TITAN system account. Use when auditing TITAN_Customer tickets only (TANCS, TANCS4, TANCS5, TANCS6, TANCS7 prefixes) for missing FAE or Field tab fields, incorrect TITAN system Reporter/Assignee values, or when editing your own reporter-filtered tickets to fill/update FAE content. Includes bilingual workflow notes, China FAE team workflow context, project-scope guardrails, fixed customfield IDs, Jira REST API audit guidance, authentication options, browser-login prerequisites, FAE label selection rules, and safe differences between check-only mode and edit/update mode.
 ---
 
 # Jira FAE Tickets
@@ -30,7 +30,25 @@ Audit scope is restricted to **TITAN_Customer** tickets only:
 1. Do **not** treat TCS and TITAN as separate systems; use `https://tcs.telechips.com/`.
 2. Do **not** audit non-TITAN_Customer tickets; filter or skip everything outside `TANCS*`.
 3. Do **not** audit fields outside the defined FAE/Field tab scope. In particular, do not check `SDK Version (TITAN)` or `Ref. H/W version`.
-4. Do **not** click through tickets one by one for large audits. Use Jira REST API search in 50-ticket pages.
+4. Do **not** audit the Field Tab `Labels` field for completeness. It can be ignored.
+5. Do **not** click through tickets one by one for large audits. Use Jira REST API search in 50-ticket pages.
+6. Do **not** treat a China FAE assignee as invalid; it is valid when the FAE team handles the issue directly.
+7. Do **not** treat headquarters AE/R&D assignees as invalid; this is the common valid state for technical investigation.
+8. Reporter is expected to be one of the 9 China FAE members. Other reporters need confirmation.
+9. Assignee `null` / empty is non-compliant and must be reported.
+10. Match Jira usernames case-insensitively, because Jira may return variants such as `williamTang` vs `williamtang`.
+
+## Telechips Jira workflow context / Telechips Jira 工作流背景
+
+1. Customers create issues in TITAN Jira at `https://tcs.telechips.com`.
+2. The system creates corresponding tickets in the `TITAN_Customer` project, usually with keys such as `TANCS-xxxx`.
+3. Newly auto-created tickets default both **Reporter** and **Assignee** to the TITAN system account (`username: titan`, `email: titan@telechips.com`). This is a placeholder, not a real person.
+4. The China FAE team must manually correct Reporter and Assignee after receiving the ticket.
+5. Reporter should be a China FAE team member in about 99% of cases, because the FAE is the real customer-facing reporter/follower.
+6. Assignee is usually a headquarters AE/R&D engineer who owns the technical investigation. In fewer cases, Assignee may be the China FAE member when the FAE team can handle the issue directly.
+7. Assignee should never remain the TITAN system account or be unassigned.
+
+客户在 `https://tcs.telechips.com` 创建问题后，系统会在 `TITAN_Customer` 项目下自动生成 `TANCS-xxxx` 票。自动票的 Reporter 和 Assignee 默认都是 TITAN 系统账号（`username: titan`，`email: titan@telechips.com`），只是占位符，不是真实负责人。中国 FAE 团队收到票后必须手动修正 Reporter 和 Assignee；总部 FAE Team Leader 要求定期审计，不能留下 TITAN 系统账号或空 Assignee。
 
 ## Startup URL and opening flow / 固定入口与打开流程
 
@@ -70,7 +88,26 @@ Before doing anything, ensure all of the following are true:
 3. 需要处理的筛选条件或 JQL 能在该浏览器会话中正常打开。
 4. 批量处理时，优先使用 issue navigator / split view，并保持当前登录态。
 
-## Two operating modes / 两种工作模式
+## Supported audit modes / 支持的两种审查模式
+
+### Mode A: Field completeness audit / 模式 A：字段完整性审查
+
+- Purpose: check whether required **FAE Tab** and **Field Tab** fields are filled.
+- Grouping: usually grouped by reporter / China FAE member.
+- JQL example: `reporter in ("user@telechips.com") AND created >= 2025-01-01 ORDER BY created DESC`
+- Scope: only TITAN_Customer ticket prefixes; skip non-scope projects.
+- Field Tab `Labels` is ignored and should not be reported as missing.
+
+### Mode B: Reporter/Assignee correction audit / 模式 B：Reporter/Assignee 修正审查
+
+- Purpose: find TANCS tickets whose Reporter or Assignee still uses the TITAN system account, or whose Assignee is empty.
+- Grouping: do **not** group by person, because problem tickets may still have `reporter = titan`.
+- JQL example: `project = TITAN_Customer AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY) AND created >= 2025-01-01 ORDER BY created DESC`
+- Scope: scan the whole `TITAN_Customer` project in one reverse-filter pass.
+
+---
+
+## Operating modes / 工作模式
 
 ### 1) Check-only audit mode / 只检查模式
 
@@ -151,13 +188,13 @@ If the task is edit/update mode:
 
 ### Overview / 概述
 
-The **Field** tab (also called the "Field Tab" or general fields area) contains operational metadata that must be filled for every ticket. During check-only audits, **both** the FAE tab and the Field tab must be inspected.
+The **Field** tab (also called the "Field Tab" or general fields area) contains operational metadata that must be filled for every ticket. During check-only audits, **both** the FAE tab and the Field tab must be inspected. The Field Tab `Labels` field is intentionally ignored and must not be reported as missing.
 
-**Field** 标签页包含每张票必须填写的运营元数据。只检查模式下，**FAE 标签页和 Field 标签页都要检查**。
+**Field** 标签页包含每张票必须填写的运营元数据。只检查模式下，**FAE 标签页和 Field 标签页都要检查**。Field 标签页的 `Labels` 字段当前忽略，不作为缺失项汇报。
 
 ### Fields to check in Field Tab / 需检查的字段
 
-Check all 8 of the following fields for empty/None value:
+Check these 7 Field Tab fields for empty/None value:
 
 | Field Name | Description / 说明 | Empty condition |
 |---|---|---|
@@ -166,7 +203,6 @@ Check all 8 of the following fields for empty/None value:
 | `Cause (Customer)` | Customer-side root cause category / 客户原因分类 | null, empty string, or "None" |
 | `Hardware Issue Pattern` | Hardware failure pattern / 硬件问题模式 | null, empty string, or "None" |
 | `Software Issue Pattern` | Software failure pattern (first field only) / 软件问题模式（只检查第一个） | null, empty string, or "None" |
-| `Labels` | Jira labels / 标签 | empty array or no labels |
 | `FAE Person` | Responsible FAE engineer / 负责 FAE | null, empty string, or "None" |
 | `git/repo command` | Git/Repo command reference / Git/Repo 命令 | null, empty string, or "None" |
 
@@ -174,9 +210,9 @@ Check all 8 of the following fields for empty/None value:
 
 **Software Issue Pattern 注意：** 如果 Field 标签页中有多个 Software Issue Pattern 字段，只检查**第一个**，忽略其余的。
 
-Do **not** audit fields outside this scope, including `SDK Version (TITAN)` and `Ref. H/W version`.
+Do **not** audit fields outside this scope, including Field Tab `Labels`, `SDK Version (TITAN)`, and `Ref. H/W version`.
 
-不要审计范围外字段，包括 `SDK Version (TITAN)` 和 `Ref. H/W version`。
+不要审计范围外字段，包括 Field 标签页 `Labels`、`SDK Version (TITAN)` 和 `Ref. H/W version`。
 
 ### Browser-click method for Field Tab / 浏览器点击检查方法
 
@@ -184,7 +220,7 @@ When inspecting via browser:
 
 1. Open the ticket in edit mode (click **Edit**).
 2. Click the **Field** tab (not the FAE tab).
-3. Check each of the 8 Field tab fields listed above.
+3. Check each of the 7 Field tab fields listed above.
 4. Record any that are empty/None.
 5. Then switch to the **FAE** tab and check FAE fields (see FAE section below).
 6. Click **Cancel** when done.
@@ -193,7 +229,7 @@ When inspecting via browser:
 
 1. 打开票，点击 **Edit** 进入编辑模式。
 2. 点击 **Field** 标签页（不是 FAE 标签页）。
-3. 逐一检查上述 8 个字段。
+3. 逐一检查上述 7 个字段。
 4. 记录空值字段。
 5. 再切换到 **FAE** 标签页检查 FAE 字段。
 6. 完成后点击 **Cancel**。
@@ -227,9 +263,11 @@ Use this mapping for TITAN_Customer audits:
 | `Cause (Customer)` | `customfield_15044` | option | null or `value === 'None'` |
 | `Hardware Issue Pattern` | `customfield_15045` | option | null or `value === 'None'` |
 | `Software Issue Pattern` | `customfield_15046` | option (first dropdown only) | null or `value === 'None'` |
-| `Labels` | `labels` | array | `[]` |
+| `Labels` | `labels` | array | Ignored; do not audit |
 | `FAE Person` | `customfield_15100` | user/string | null or empty string |
 | `git/repo command` | `customfield_15101` | string | null or empty string |
+
+`Labels` is shown here for mapping completeness only. Do not fetch it or report it as missing in Field Tab completeness audits.
 
 Note: Jira metadata contains two fields named `git/repo command` (`customfield_15008` and `customfield_15101`). The Field tab uses `customfield_15101`.
 
@@ -276,7 +314,7 @@ Run this from the DevTools Console on `https://tcs.telechips.com`:
   const fields = [
     'summary',
     'customfield_10684', 'customfield_15009', 'customfield_15044',
-    'customfield_15045', 'customfield_15046', 'labels',
+    'customfield_15045', 'customfield_15046',
     'customfield_15100', 'customfield_15101',
     'customfield_15200', 'customfield_15300', 'comment'
   ].join(',');
@@ -302,7 +340,6 @@ Run this from the DevTools Console on `https://tcs.telechips.com`:
     if (!f.customfield_15044 || f.customfield_15044.value === 'None') m.push('Cause (Customer)');
     if (!f.customfield_15045 || f.customfield_15045.value === 'None') m.push('Hardware Issue Pattern');
     if (!f.customfield_15046 || f.customfield_15046.value === 'None') m.push('Software Issue Pattern');
-    if (!f.labels || f.labels.length === 0) m.push('Labels');
     if (!f.customfield_15100) m.push('FAE Person');
     if (!f.customfield_15101) m.push('git/repo command');
     if (!f.customfield_15300 || f.customfield_15300.length === 0) m.push('FAE_Label');
@@ -313,6 +350,136 @@ Run this from the DevTools Console on `https://tcs.telechips.com`:
   console.log(`Total: ${allIssues.length}, Missing: ${missing.length}`);
   console.table(missing);
   return missing;
+})();
+```
+
+---
+
+## Reporter/Assignee correction audit / Reporter/Assignee 修正审查
+
+Use this mode to find `TITAN_Customer` tickets whose Reporter or Assignee was not corrected after automatic creation.
+
+### Reverse-filter JQL / 反向过滤 JQL
+
+Scan the whole project once:
+
+```jql
+project = TITAN_Customer
+AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
+AND created >= 2025-01-01
+ORDER BY created DESC
+```
+
+Fields to fetch:
+
+```text
+summary,reporter,assignee,created
+```
+
+### Expected values and severity / 期望值与严重程度
+
+| Field | Expected value | Non-compliant case | Severity |
+|---|---|---|---|
+| Reporter | One of the 9 China FAE members | Still TITAN system account | HIGH: 99% should be the FAE owner |
+| Reporter | One of the 9 China FAE members | Another non-China-FAE user | MEDIUM: needs confirmation |
+| Assignee | Headquarters AE/R&D engineer OR China FAE | Still TITAN system account | HIGH |
+| Assignee | Headquarters AE/R&D engineer OR China FAE | Unassigned / null | MEDIUM |
+
+Important:
+
+- China FAE as Assignee is valid in the minority of cases where the FAE team can resolve the issue directly.
+- Headquarters AE/R&D as Assignee is the most common valid state.
+- Only TITAN system account or null Assignee is automatically non-compliant.
+- Reporter outside the 9 China FAE members is not automatically wrong, but must be reported for confirmation.
+
+### China FAE team members / 中国 FAE 团队成员
+
+Use username first when auditing. Jira REST API returns `reporter.name` and `assignee.name` as username strings. Compare usernames case-insensitively.
+
+| Username | Display Name | Email |
+|---|---|---|
+| `williamTang` | William Tang | williamTang@telechips.com |
+| `hmyang` | HongMing Yang | hmyang@telechips.com |
+| `shzhzeng` | ShengZhou Zeng | shzhzeng@telechips.com |
+| `zyzhong` | ZhiYong Zhong | zyzhong@telechips.com |
+| `jingoust` | 박정진 (JJ PARK) | jingoust@telechips.com |
+| `Chris.Hsieh` | Chris Hsieh | Chris.Hsieh@telechips.com |
+| `richard.li` | Richard Li | richard.li@telechips.com |
+| `simon.sun` | Simon Sun | simon.sun@telechips.com |
+| `junkai.he` | Junkai He | junkai.he@telechips.com |
+
+TITAN system account:
+
+- Username: `titan`
+- Email: `titan@telechips.com`
+- Meaning: placeholder account used by automatic ticket creation.
+
+### Browser Console script / 浏览器 Console 脚本
+
+Run this from the DevTools Console on `https://tcs.telechips.com`:
+
+```javascript
+(async () => {
+  const CHINA_FAE_USERNAMES = [
+    'williamtang', 'hmyang', 'shzhzeng', 'zyzhong', 'jingoust',
+    'chris.hsieh', 'richard.li', 'simon.sun', 'junkai.he'
+  ];
+
+  const TITAN_ACCOUNT = 'titan';
+
+  const jql = encodeURIComponent(
+    'project = TITAN_Customer ' +
+    'AND (reporter in ("' + TITAN_ACCOUNT + '") OR assignee in ("' + TITAN_ACCOUNT + '") OR assignee is EMPTY) ' +
+    'AND created >= 2025-01-01 ' +
+    'ORDER BY created DESC'
+  );
+  const fields = 'summary,reporter,assignee,created';
+
+  let allIssues = [], startAt = 0;
+  while (true) {
+    const resp = await fetch(`/rest/api/2/search?jql=${jql}&fields=${fields}&maxResults=50&startAt=${startAt}`);
+    const data = await resp.json();
+    allIssues = allIssues.concat(data.issues);
+    if (allIssues.length >= data.total) break;
+    startAt += 50;
+  }
+
+  const result = allIssues.map(issue => {
+    const f = issue.fields;
+    const problems = [];
+    let highSeverity = false;
+
+    const reporterName = f.reporter ? f.reporter.name : null;
+    if (!reporterName || reporterName.toLowerCase() === TITAN_ACCOUNT) {
+      problems.push('Reporter still TITAN');
+      highSeverity = true;
+    } else if (!CHINA_FAE_USERNAMES.includes(reporterName.toLowerCase())) {
+      problems.push('Reporter not in China FAE: ' + reporterName);
+    }
+
+    if (!f.assignee) {
+      problems.push('Assignee unassigned');
+    } else if (f.assignee.name.toLowerCase() === TITAN_ACCOUNT) {
+      problems.push('Assignee still TITAN');
+      highSeverity = true;
+    }
+
+    return {
+      key: issue.key,
+      summary: f.summary && f.summary.substring(0, 60),
+      reporter: f.reporter ? f.reporter.displayName : '(none)',
+      assignee: f.assignee ? f.assignee.displayName : '(unassigned)',
+      created: f.created && f.created.substring(0, 10),
+      problems,
+      severity: highSeverity ? 'HIGH' : (problems.length > 0 ? 'MEDIUM' : 'OK')
+    };
+  }).filter(r => r.problems.length > 0);
+
+  console.log(`Found ${result.length} tickets needing reporter/assignee fix`);
+  console.log('HIGH severity:', result.filter(r => r.severity === 'HIGH').length);
+  console.log('MEDIUM severity:', result.filter(r => r.severity === 'MEDIUM').length);
+  console.table(result);
+  return result;
 })();
 ```
 
@@ -382,7 +549,7 @@ For each ticket:
   2. → Click "Field" tab
      Check: O/S, Self Resolution, Cause (Customer),
             Hardware Issue Pattern, Software Issue Pattern (1st only),
-            Labels, FAE Person, git/repo command
+            FAE Person, git/repo command
      Record any empty fields or fields set to None
   3. → Click "FAE" tab
      Check: FAE_Label, FAE Pattern, Comment
@@ -399,7 +566,7 @@ For each ticket:
   2. → 点击 "Field" 标签页
      检查：O/S、Self Resolution、Cause (Customer)、
            Hardware Issue Pattern、Software Issue Pattern（只检查第一个）、
-           Labels、FAE Person、git/repo command
+          FAE Person、git/repo command
      记录空值字段，以及值为 None 的字段
   3. → 点击 "FAE" 标签页
      检查：FAE_Label、FAE Pattern、Comment
@@ -462,7 +629,7 @@ Tickets with Missing Fields: 15
 Total Missing Field Entries: 38
 
 --- Non-Compliant Tickets ---
-TANCS5-101 | Field: O/S, Labels, git/repo command | FAE: FAE_Label | Total: 4
+TANCS5-101 | Field: O/S, git/repo command | FAE: FAE_Label | Total: 3
 TANCS5-88  | Field: Self Resolution, FAE Person | FAE: Comment | Total: 3
 ...
 
