@@ -93,6 +93,8 @@ Use:
 GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&maxResults=50&startAt=<offset>
 ```
 
+Always paginate by `startAt` until collected issues reach the response `total`. Do not rely on the current Jira UI page or XML/RSS copy as full filter data.
+
 Required fields:
 
 ```text
@@ -143,6 +145,13 @@ The audit report includes:
 - Per-ticket breakdown of missing fields (Field tab vs FAE tab)
 - Reporter/Assignee severity counts when that audit mode is used
 - For Mode B: in-scope China FAE tickets to fix, uncertain tickets with no Issue Links, and skipped out-of-scope summary/examples
+
+For management reports, put the compact table first:
+
+| 담당자 | Missing 개수 | Missing Ticket List | In-scope |
+|---|---:|---|---:|
+
+When "Only Titan Issue" is requested, summarize only `TANCS*` tickets and exclude `TMRCR`.
 
 ## Tips
 

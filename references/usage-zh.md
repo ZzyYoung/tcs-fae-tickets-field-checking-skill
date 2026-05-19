@@ -93,6 +93,8 @@ ORDER BY created DESC
 GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&maxResults=50&startAt=<offset>
 ```
 
+必须用 `startAt` 分页直到收集数量达到响应里的 `total`。不要依赖 Jira 当前 UI 页或 XML/RSS 复制内容作为完整 filter 数据。
+
 必取字段：
 
 ```text
@@ -143,6 +145,13 @@ summary,reporter,assignee,created,issuelinks
 - 每张票的缺失字段明细（区分 Field 标签页和 FAE 标签页）
 - Reporter/Assignee 审查模式下的严重程度统计
 - Mode B 下需列出中国 FAE 需修正票、无 Issue Links 待确认票、已跳过非中国 FAE 范围汇总和示例
+
+给领导看的管理报告，先放简洁汇总表：
+
+| 담당자 | Missing 개수 | Missing Ticket List | In-scope |
+|---|---:|---|---:|
+
+如果要求 “Only Titan Issue”，只汇总 `TANCS*`，排除 `TMRCR`。
 
 ## 注意事项
 

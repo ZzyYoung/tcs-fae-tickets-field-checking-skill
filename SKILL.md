@@ -246,6 +246,34 @@ When using the Jira REST API for bulk auditing, fetch all required fields in a s
 GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&maxResults=50&startAt=<offset>
 ```
 
+### Mandatory REST pagination / 必须 REST 分页抓全量
+
+Do **not** treat the currently visible Jira page, split-view page, XML/RSS page, or copied browser text as the full result set. A Jira filter can contain many pages. XML/RSS exports may show `total="225"` but copy/render only a partial page. This caused missed tickets such as `TANCS-4351`.
+
+For field audits, the reliable method is REST pagination:
+
+1. Call `/rest/api/2/search` with `maxResults=50` (or another Jira-accepted page size) and `startAt=0`.
+2. Read `total` from the JSON response.
+3. Continue with `startAt=50`, `100`, `150`, ... until the number of collected issues is `>= total`.
+4. Only after all pages are collected, apply scope filtering and missing-field checks.
+5. Save or report the JQL, total fetched, page offsets used, and any skipped outside-scope tickets.
+
+Example:
+
+```javascript
+const allIssues = [];
+let startAt = 0;
+while (true) {
+  const resp = await fetch(`/rest/api/2/search?jql=${jql}&fields=${fields}&maxResults=50&startAt=${startAt}`);
+  const data = await resp.json();
+  allIssues.push(...data.issues);
+  if (allIssues.length >= data.total) break;
+  startAt += 50;
+}
+```
+
+If browser automation cannot execute `fetch` directly, open each REST URL in logged-in Chrome and copy/save the JSON page, but still use `startAt` pagination and verify the collected unique issue count equals `total`.
+
 ### JQL pre-filter for missing values / 用 JQL 预筛选缺失值
 
 For faster field-completeness audits, first use Jira JQL to export only tickets with missing or `None` values. Do not rely only on browser-visible inspection.
@@ -280,6 +308,22 @@ ORDER BY created DESC
 ```
 
 `cf[15044] = None` is important: a ticket such as `TANCS-4418` with `Cause (Customer): None` must be reported as missing.
+
+### Leader-friendly summary format / 面向领导的汇总格式
+
+When the user asks for a management report, use a compact table instead of long text. For Greater China FAE field-completeness reports, use:
+
+| 담당자 | Missing 개수 | Missing Ticket List | In-scope |
+|---|---:|---|---:|
+| William Tang | 0 | - | 5 |
+
+Rules for this summary:
+
+- `Missing 개수` = number of tickets with at least one missing required field, not the number of missing field entries.
+- `Missing Ticket List` = issue keys only, grouped by FAE; use `-` when there are no missing tickets.
+- `In-scope` = number of checked in-scope Titan tickets for that FAE.
+- If the leader asks for **Only Titan Issue**, include only `TANCS*` tickets and exclude `TMRCR` / RnD-Cooperation Request from that specific report.
+- Keep detailed missing-field breakdown in a secondary section or attachment, not in the main summary table.
 
 ### Fixed field ID mapping / 固定字段 ID 映射
 

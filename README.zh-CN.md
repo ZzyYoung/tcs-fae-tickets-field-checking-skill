@@ -153,6 +153,8 @@ GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&max
 
 为了更快导出缺失字段，可以先用 JQL 预筛选。option 字段必须同时检查 `IS EMPTY` 和 `= None`，例如 `Cause (Customer)` 使用 `cf[15044] IS EMPTY OR cf[15044] = None`。FAE Tab 的 `Comment` 是 `customfield_15201`，应使用 `cf[15201] IS EMPTY`，不要用 Jira 系统评论字段。
 
+REST 结果必须用 `startAt=0,50,100...` 分页，直到收集数量达到 `total`。不要把 Jira 当前可见页或 XML/RSS 复制内容当成完整 filter 结果。给领导看的报告使用简洁汇总表：담당자、Missing 개수、Missing Ticket List、In-scope；如果要求 “Only Titan Issue”，只包含 `TANCS*`，排除 `TMRCR`。
+
 认证方式：
 
 1. 浏览器 Console：在 `https://tcs.telechips.com` 打开 DevTools，粘贴 `SKILL.md` 中的审计脚本，浏览器会自动带 cookie。
