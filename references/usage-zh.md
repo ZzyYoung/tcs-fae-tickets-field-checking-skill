@@ -6,14 +6,14 @@
 2. 提供审计用的 JQL（reporter、日期范围）。
 3. 告知 Claude 当前是**字段完整性审查**、**Reporter/Assignee 修正审查**还是**修改更新模式**。
 4. 字段完整性审查：Claude 会同时检查 Field 标签页和 FAE 标签页，但不检查 Field 标签页 Labels。
-5. Reporter/Assignee 修正审查：Claude 会扫描整个 TITAN_Customer 项目，找出仍保留 TITAN 系统账号的票。
+5. Reporter/Assignee 修正审查：Claude 会扫描整个客户范围（`TANCS*` 加 `TMRCR`），找出仍保留 TITAN 系统账号的票。
 6. 修改更新模式：Claude 只修改 FAE 标签页字段（需明确指示）。
 
 ## 系统与项目范围
 
 - TCS（`tcs.telechips.com`）是 Jira 部署域名；TITAN 是 Jira 实例/上下文。对这个 skill 来说二者是同一个系统。
-- 只审计 TITAN_Customer 票号前缀：`TANCS`、`TANCS4`、`TANCS5`、`TANCS6`、`TANCS7`。
-- 跳过 `TMRCR-*`、`TMCF-*`、`TPCP-*`、`IM*`、`IS*`、`IG*` 以及其他非 TITAN_Customer 项目。
+- 只审计客户相关范围票号前缀：所有 `TANCS*`，以及 `TMRCR`。
+- 跳过 `TMCF-*`、`TPCP-*`、`IM*`、`IS*`、`IG*` 以及其他非客户范围项目。
 - 大批量审计时，使用 Jira REST API search 分页（`maxResults=50`），不要逐张点击工单。
 
 ## 审计范围
@@ -51,11 +51,11 @@ created >= 2025-01-01 AND reporter in (currentUser()) order by created DESC
 project = TANCS5 AND created >= 2025-01-01 AND reporter in ("user@telechips.com") order by created DESC
 ```
 
-如果 JQL 范围较宽，获取结果后仍然必须按 TITAN_Customer 前缀过滤，再生成报告。
+如果 JQL 范围较宽，获取结果后仍然必须按 `TANCS*` 和 `TMRCR` 前缀过滤，再生成报告。
 
 **Reporter/Assignee 修正审查：**
 ```jql
-project = TITAN_Customer
+project in (TITAN_Customer, TMRCR)
 AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
 AND created >= 2025-01-01
 ORDER BY created DESC
@@ -91,12 +91,12 @@ summary,reporter,assignee,created
 - 忽略 Field 标签页 Labels。
 - 返回结构化的审计报告。
 - 大批量审计时，优先使用 REST API。
-- 不属于 TITAN_Customer 范围或没有 FAE 标签页的票直接跳过。
+- 不属于客户范围或没有 FAE 标签页的票直接跳过。
 - 记录票号和全部缺失字段。
 
 ### Reporter/Assignee 修正审查
 - Claude 只读取，不修改票。
-- 使用上面的反向过滤 JQL，一次扫描整个 TITAN_Customer 项目。
+- 使用上面的反向过滤 JQL，一次扫描整个客户范围（`TANCS*` 加 `TMRCR`）。
 - Reporter 应为中国 FAE 9 人之一；`titan` 为高严重程度，其他非中国 FAE reporter 为中严重程度。
 - Assignee 可以是总部 AE/R&D 或中国 FAE；只有 `titan` 是高严重程度，null/未分配是中严重程度。
 - Username 匹配必须大小写不敏感。

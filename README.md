@@ -7,8 +7,8 @@ An OpenClaw skill for auditing and updating Telechips TITAN Jira tickets on `tcs
 ## System & scope
 
 - TCS (`tcs.telechips.com`) is the Jira deployment domain; TITAN is the Jira instance/context. Treat them as the same system for this skill.
-- Audit only TITAN_Customer tickets: `TANCS-*`, `TANCS4-*`, `TANCS5-*`, `TANCS6-*`, and `TANCS7-*`.
-- Skip other projects such as `TMRCR-*`, `TMCF-*`, `TPCP-*`, `IM*`, `IS*`, and `IG*`; they are outside this skill's FAE/Field audit scope.
+- Audit customer-scope tickets: all `TANCS*` prefixes plus `TMRCR-*`.
+- Skip non-scope projects such as `TMCF-*`, `TPCP-*`, `IM*`, `IS*`, and `IG*`; they are outside this skill's FAE/Field audit scope.
 - For large check-only audits, use Jira REST API paging instead of opening tickets one by one.
 
 ## What this skill does
@@ -100,7 +100,7 @@ Note: Jira metadata contains two fields named `git/repo command` (`customfield_1
 Use this JQL to scan all problem candidates in one pass:
 
 ```jql
-project = TITAN_Customer
+project in (TITAN_Customer, TMRCR)
 AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
 AND created >= 2025-01-01
 ORDER BY created DESC
@@ -170,7 +170,7 @@ Always start from:
 
 - Always click **FAE** before checking or editing FAE-related fields
 - In audit mode, inspect **both** the Field tab and the FAE tab
-- Restrict audit results to the TITAN_Customer ticket prefixes listed above
+- Restrict audit results to `TANCS*` and `TMRCR` ticket prefixes listed above
 - Do not report Field Tab `Labels` as missing
 - `FAE_Label` is a label picker, not plain text
 - When creating/selecting labels, wait for suggestions and select the intended item before updating
@@ -191,7 +191,7 @@ Recommended audit report includes:
 - Filter time range
 - JQL/filter used
 - Total pages / total tickets
-- Skipped tickets outside TITAN_Customer scope or with no FAE tab
+- Skipped tickets outside customer scope or with no FAE tab
 - Tickets with missing required fields in either tab
 - Reporter/Assignee audit severity counts when that mode is requested
 

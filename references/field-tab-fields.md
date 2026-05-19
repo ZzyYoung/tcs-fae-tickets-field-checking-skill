@@ -1,13 +1,13 @@
 # Field Tab — Custom Field ID Lookup Guide
 
 This file explains the correct Jira custom field IDs for the 7 checked Field Tab fields
-that must be audited in TITAN_Customer. TCS (`tcs.telechips.com`) is the Jira
+that must be audited in customer-scope tickets. TCS (`tcs.telechips.com`) is the Jira
 deployment domain and TITAN is the Jira instance/context; treat them as the same
 system for this skill.
 
-Only audit TITAN_Customer tickets: `TANCS-*`, `TANCS4-*`, `TANCS5-*`,
-`TANCS6-*`, and `TANCS7-*`. Skip other projects such as `TMRCR-*`, `TMCF-*`,
-`TPCP-*`, `IM*`, `IS*`, and `IG*`.
+Only audit customer-scope tickets: all `TANCS*` prefixes (for example `TANCS-*`,
+`TANCS1-*`, `TANCS2-*`, `TANCS3-*`, etc.) plus `TMRCR-*`. Skip non-scope
+projects such as `TMCF-*`, `TPCP-*`, `IM*`, `IS*`, and `IG*`.
 
 ## Step 1: Fetch all fields from TITAN
 

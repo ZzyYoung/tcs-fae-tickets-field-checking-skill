@@ -1,6 +1,6 @@
 ---
 name: jira-fae-tickets
-description: Inspect and update Telechips TITAN Jira tickets on tcs.telechips.com, especially FAE tab handling for FAE_Label, FAE Pattern, and Comment, Field tab handling for O/S, Self Resolution, Cause (Customer), Hardware Issue Pattern, Software Issue Pattern, FAE Person, and git/repo command, and Reporter/Assignee correction audits for tickets still assigned to the TITAN system account. Use when auditing TITAN_Customer tickets only (TANCS, TANCS4, TANCS5, TANCS6, TANCS7 prefixes) for missing FAE or Field tab fields, incorrect TITAN system Reporter/Assignee values, or when editing your own reporter-filtered tickets to fill/update FAE content. Includes bilingual workflow notes, China FAE team workflow context, project-scope guardrails, fixed customfield IDs, Jira REST API audit guidance, authentication options, browser-login prerequisites, FAE label selection rules, and safe differences between check-only mode and edit/update mode.
+description: Inspect and update Telechips TITAN Jira tickets on tcs.telechips.com, especially FAE tab handling for FAE_Label, FAE Pattern, and Comment, Field tab handling for O/S, Self Resolution, Cause (Customer), Hardware Issue Pattern, Software Issue Pattern, FAE Person, and git/repo command, and Reporter/Assignee correction audits for tickets still assigned to the TITAN system account. Use when auditing TITAN/TMRCR customer-scope tickets only (any TANCS* prefix plus TMRCR) for missing FAE or Field tab fields, incorrect TITAN system Reporter/Assignee values, or when editing your own reporter-filtered tickets to fill/update FAE content. Includes bilingual workflow notes, China FAE team workflow context, project-scope guardrails, fixed customfield IDs, Jira REST API audit guidance, authentication options, browser-login prerequisites, FAE label selection rules, and safe differences between check-only mode and edit/update mode.
 ---
 
 # Jira FAE Tickets
@@ -13,22 +13,24 @@ Handle Telechips TITAN Jira tickets through the browser tool or Jira REST API.
 
 **TCS 和 TITAN 不是两个独立系统。** `tcs.telechips.com` 是部署 Jira 的 Telechips Collaboration System 域名，**TITAN** 是其中的 Jira 实例/项目上下文。
 
-Audit scope is restricted to **TITAN_Customer** tickets only:
+Audit scope is restricted to customer-scope tickets only:
 
-- Include ticket prefixes: `TANCS-`, `TANCS4-`, `TANCS5-`, `TANCS6-`, `TANCS7-`
-- Skip other projects/prefixes such as `TMRCR-*`, `TMCF-*`, `TPCP-*`, `IM*`, `IS*`, `IG*`, etc.
+- Include all `TANCS*` ticket prefixes, such as `TANCS-`, `TANCS1-`, `TANCS2-`, `TANCS3-`, `TANCS4-`, `TANCS5-`, `TANCS6-`, `TANCS7-`, etc.
+- Include `TMRCR-*` tickets.
+- Skip non-scope projects/prefixes such as `TMCF-*`, `TPCP-*`, `IM*`, `IS*`, `IG*`, etc.
 - Reason: those other projects do not have the target **FAE** tab and are outside this skill's audit scope.
 
-审计范围只限 **TITAN_Customer** 票：
+审计范围只限客户相关范围票：
 
-- 包含票号前缀：`TANCS-`、`TANCS4-`、`TANCS5-`、`TANCS6-`、`TANCS7-`
-- 跳过其他项目/前缀，例如 `TMRCR-*`、`TMCF-*`、`TPCP-*`、`IM*`、`IS*`、`IG*` 等
+- 包含所有 `TANCS*` 票号前缀，例如 `TANCS-`、`TANCS1-`、`TANCS2-`、`TANCS3-`、`TANCS4-`、`TANCS5-`、`TANCS6-`、`TANCS7-` 等
+- 包含 `TMRCR-*` 票
+- 跳过非范围项目/前缀，例如 `TMCF-*`、`TPCP-*`、`IM*`、`IS*`、`IG*` 等
 - 原因：这些项目没有目标 **FAE** 标签页，不属于本 skill 审计范围
 
 ### Common pitfalls / 常见错误
 
 1. Do **not** treat TCS and TITAN as separate systems; use `https://tcs.telechips.com/`.
-2. Do **not** audit non-TITAN_Customer tickets; filter or skip everything outside `TANCS*`.
+2. Do **not** audit outside-scope tickets; include only `TANCS*` and `TMRCR`, and skip `TMCF/TPCP/IM/IS/IG`.
 3. Do **not** audit fields outside the defined FAE/Field tab scope. In particular, do not check `SDK Version (TITAN)` or `Ref. H/W version`.
 4. Do **not** audit the Field Tab `Labels` field for completeness. It can be ignored.
 5. Do **not** click through tickets one by one for large audits. Use Jira REST API search in 50-ticket pages.
@@ -95,15 +97,15 @@ Before doing anything, ensure all of the following are true:
 - Purpose: check whether required **FAE Tab** and **Field Tab** fields are filled.
 - Grouping: usually grouped by reporter / China FAE member.
 - JQL example: `reporter in ("user@telechips.com") AND created >= 2025-01-01 ORDER BY created DESC`
-- Scope: only TITAN_Customer ticket prefixes; skip non-scope projects.
+- Scope: include all `TANCS*` prefixes and `TMRCR`; skip non-scope projects.
 - Field Tab `Labels` is ignored and should not be reported as missing.
 
 ### Mode B: Reporter/Assignee correction audit / 模式 B：Reporter/Assignee 修正审查
 
 - Purpose: find TANCS tickets whose Reporter or Assignee still uses the TITAN system account, or whose Assignee is empty.
 - Grouping: do **not** group by person, because problem tickets may still have `reporter = titan`.
-- JQL example: `project = TITAN_Customer AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY) AND created >= 2025-01-01 ORDER BY created DESC`
-- Scope: scan the whole `TITAN_Customer` project in one reverse-filter pass.
+- JQL example: `project in (TITAN_Customer, TMRCR) AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY) AND created >= 2025-01-01 ORDER BY created DESC`
+- Scope: scan the whole customer scope (`TANCS*` plus `TMRCR`) in one reverse-filter pass.
 
 ---
 
@@ -124,7 +126,7 @@ If the task is check-only:
 - Open the filtered issue list.
 - For large multi-page audits, use the REST API method.
 - When possible, use a high-efficiency authenticated audit method for read-only inspection instead of slow human-like browser clicking.
-- Restrict the result set to TITAN_Customer tickets or skip non-matching issue keys after fetch.
+- Restrict the result set to `TANCS*` and `TMRCR` tickets or skip non-matching issue keys after fetch.
 - For each ticket, check **both** the Field tab AND the FAE tab fields (see sections below).
 - Record the ticket key if any required field is empty.
 - Continue REST pagination until all results are checked.
@@ -134,7 +136,7 @@ If the task is check-only:
 
 - 打开筛选后的票列表。
 - 使用 REST API 批量审计。
-- 只审计 TITAN_Customer 票，或在获取后跳过不符合前缀的票号。
+- 只审计 `TANCS*` 和 `TMRCR` 票，或在获取后跳过不符合前缀的票号。
 - 对每一张票，同时检查 FAE 标签页和 Field 标签页字段。
 - 只要有任一项为空，就记下票号和缺失字段名。
 - REST 分页直到所有结果检查完成。
@@ -244,7 +246,7 @@ GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&max
 
 ### Fixed field ID mapping / 固定字段 ID 映射
 
-Use this mapping for TITAN_Customer audits:
+Use this mapping for customer-scope audits (`TANCS*` plus `TMRCR`):
 
 #### FAE Tab
 
@@ -319,7 +321,10 @@ Run this from the DevTools Console on `https://tcs.telechips.com`:
     'customfield_15200', 'customfield_15300', 'comment'
   ].join(',');
 
-  const INCLUDED_PREFIXES = ['TANCS', 'TANCS4', 'TANCS5', 'TANCS6', 'TANCS7'];
+  const isIncludedIssue = key => {
+    const prefix = key.split('-')[0];
+    return prefix.startsWith('TANCS') || prefix === 'TMRCR';
+  };
   let allIssues = [], startAt = 0;
   while (true) {
     const resp = await fetch(`/rest/api/2/search?jql=${jql}&fields=${fields}&maxResults=50&startAt=${startAt}`);
@@ -331,8 +336,7 @@ Run this from the DevTools Console on `https://tcs.telechips.com`:
 
   const missing = [];
   for (const issue of allIssues) {
-    const prefix = issue.key.split('-')[0];
-    if (!INCLUDED_PREFIXES.includes(prefix)) continue;
+    if (!isIncludedIssue(issue.key)) continue;
     const f = issue.fields;
     const m = [];
     if (!f.customfield_10684 || f.customfield_10684.value === 'None') m.push('O/S');
@@ -361,10 +365,10 @@ Use this mode to find `TITAN_Customer` tickets whose Reporter or Assignee was no
 
 ### Reverse-filter JQL / 反向过滤 JQL
 
-Scan the whole project once:
+Scan the whole customer scope once:
 
 ```jql
-project = TITAN_Customer
+project in (TITAN_Customer, TMRCR)
 AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
 AND created >= 2025-01-01
 ORDER BY created DESC
@@ -428,7 +432,7 @@ Run this from the DevTools Console on `https://tcs.telechips.com`:
   const TITAN_ACCOUNT = 'titan';
 
   const jql = encodeURIComponent(
-    'project = TITAN_Customer ' +
+    'project in (TITAN_Customer, TMRCR) ' +
     'AND (reporter in ("' + TITAN_ACCOUNT + '") OR assignee in ("' + TITAN_ACCOUNT + '") OR assignee is EMPTY) ' +
     'AND created >= 2025-01-01 ' +
     'ORDER BY created DESC'

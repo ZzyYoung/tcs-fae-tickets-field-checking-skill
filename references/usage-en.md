@@ -12,8 +12,8 @@
 ## System and project scope
 
 - TCS (`tcs.telechips.com`) is the Jira deployment domain; TITAN is the Jira instance/context. They are the same system for this skill.
-- Audit only TITAN_Customer issue keys with prefixes `TANCS`, `TANCS4`, `TANCS5`, `TANCS6`, and `TANCS7`.
-- Skip `TMRCR-*`, `TMCF-*`, `TPCP-*`, `IM*`, `IS*`, `IG*`, and other projects outside TITAN_Customer.
+- Audit only customer-scope issue keys: any prefix starting with `TANCS` plus `TMRCR`.
+- Skip `TMCF-*`, `TPCP-*`, `IM*`, `IS*`, `IG*`, and other projects outside customer scope.
 - For large audits, use Jira REST API search pages (`maxResults=50`) instead of ticket-by-ticket browser clicking.
 
 ## Audit scope
@@ -51,11 +51,11 @@ created >= 2025-01-01 AND reporter in (currentUser()) order by created DESC
 project = TANCS5 AND created >= 2025-01-01 AND reporter in ("user@telechips.com") order by created DESC
 ```
 
-If the JQL is broad, still filter the fetched results to the included TITAN_Customer prefixes before reporting.
+If the JQL is broad, still filter fetched results to `TANCS*` and `TMRCR` before reporting.
 
 **Reporter/Assignee correction audit:**
 ```jql
-project = TITAN_Customer
+project in (TITAN_Customer, TMRCR)
 AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
 AND created >= 2025-01-01
 ORDER BY created DESC
@@ -91,7 +91,7 @@ summary,reporter,assignee,created
 - Field Tab Labels is ignored.
 - Results are returned as a structured report.
 - For large multi-page audits, prefer the REST API.
-- Skip tickets outside TITAN_Customer scope or with no FAE tab.
+- Skip tickets outside customer scope or with no FAE tab.
 - Record ticket key plus all missing fields.
 
 ### Reporter/Assignee correction audit

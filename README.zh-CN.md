@@ -5,8 +5,8 @@
 ## 系统与范围
 
 - TCS（`tcs.telechips.com`）是 Jira 部署域名；TITAN 是 Jira 实例/上下文。对这个 skill 来说，它们是同一个系统。
-- 只审计 TITAN_Customer 票：`TANCS-*`、`TANCS4-*`、`TANCS5-*`、`TANCS6-*`、`TANCS7-*`。
-- 跳过其他项目，例如 `TMRCR-*`、`TMCF-*`、`TPCP-*`、`IM*`、`IS*`、`IG*`；这些不属于本 skill 的 FAE/Field 审计范围。
+- 只审计客户相关范围票：所有 `TANCS*` 前缀以及 `TMRCR-*`。
+- 跳过非范围项目，例如 `TMCF-*`、`TPCP-*`、`IM*`、`IS*`、`IG*`；这些不属于本 skill 的 FAE/Field 审计范围。
 - 大批量只读检查时，使用 Jira REST API 分页获取，不要逐张打开工单。
 
 ## 这个 skill 做什么
@@ -21,7 +21,7 @@
    - 大批量检查时优先使用高效率只读检查方式
 
 2. **Reporter/Assignee 修正审查**
-   - 一次扫描整个 `TITAN_Customer` 项目
+   - 一次扫描整个客户范围（`TANCS*` 加 `TMRCR`）
    - 找出 Reporter 或 Assignee 仍是 TITAN 系统账号的票
    - 找出 Assignee 为空的票
    - 不按个人分组，因为问题票的 `reporter` 可能仍是 `titan`
@@ -98,7 +98,7 @@
 使用这个 JQL 一次扫描所有候选问题票：
 
 ```jql
-project = TITAN_Customer
+project in (TITAN_Customer, TMRCR)
 AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
 AND created >= 2025-01-01
 ORDER BY created DESC
@@ -168,7 +168,7 @@ GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&max
 
 - 检查或修改 FAE 相关内容前，必须先点 **FAE**
 - 审计模式下，必须同时检查 **Field** 和 **FAE** 两个标签页
-- 审计结果必须限制在上面列出的 TITAN_Customer 票号前缀内
+- 审计结果必须限制在上面列出的 `TANCS*` 和 `TMRCR` 票号前缀内
 - 不要把 Field 标签页 `Labels` 汇报为缺失
 - `FAE_Label` 是标签选择器，不是普通文本输入框
 - 创建或选择标签时，要等待候选项出现并选中目标项，再点击更新
@@ -189,7 +189,7 @@ GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&max
 - 检查条件时间范围
 - 使用的 JQL / filter
 - 总页数 / 总票数
-- 因不属于 TITAN_Customer 范围或没有 FAE 标签页而跳过的票
+- 因不属于客户范围或没有 FAE 标签页而跳过的票
 - 任一标签页存在缺失字段的票
 - Reporter/Assignee 审查模式下的严重程度统计
 
