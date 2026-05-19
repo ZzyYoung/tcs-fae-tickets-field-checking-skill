@@ -21,9 +21,9 @@
    - 大批量检查时优先使用高效率只读检查方式
 
 2. **Reporter/Assignee 修正审查**
-   - 一次扫描整个客户范围（`TANCS*` 加 `TMRCR`）
-   - 找出 Reporter 或 Assignee 仍是 TITAN 系统账号的票
-   - 找出 Assignee 为空的票
+   - 扫描 `TITAN_Customer` 中 Reporter/Assignee 仍是 TITAN 系统账号或 Assignee 为空的 TANCS 候选票
+   - 通过 Issue Links 检查关联工单 Assignee 后再报告
+   - 只报告关联工单 Assignee 是中国 FAE 9 人之一的候选票
    - 不按个人分组，因为问题票的 `reporter` 可能仍是 `titan`
 
 3. **修改更新模式**
@@ -95,10 +95,10 @@
 
 ## Reporter/Assignee 修正审查
 
-使用这个 JQL 一次扫描所有候选问题票：
+使用这个 JQL 扫描 TANCS 候选票：
 
 ```jql
-project in (TITAN_Customer, TMRCR)
+project = TITAN_Customer
 AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
 AND created >= 2025-01-01
 ORDER BY created DESC
@@ -107,19 +107,27 @@ ORDER BY created DESC
 获取字段：
 
 ```text
-summary,reporter,assignee,created
+summary,reporter,assignee,created,issuelinks
 ```
+
+然后从 `outwardIssue` 和 `inwardIssue` 两种结构里提取所有关联工单 key，不要对关联工单 key 做任何前缀过滤。逐个拉取关联工单：
+
+```text
+GET /rest/api/2/issue/<linked-issue-key>?fields=assignee,summary
+```
+
+只有当至少一个关联工单 Assignee username（转小写后）属于中国 FAE 9 人名单时，才报告这张 TANCS 候选票。没有 Issue Links 的票放到 `UNCERTAIN - no issue links` / 待人工确认；关联工单 Assignee 不是中国 FAE 的票，作为非中国 FAE 范围跳过。
 
 判定规则：
 
 | 字段 | 期望值 | 不合规情况 | 严重程度 |
 |---|---|---|---|
-| Reporter | 中国 FAE 9 人之一 | 仍是 TITAN 系统账号 | 高 |
-| Reporter | 中国 FAE 9 人之一 | 非中国 FAE 的其他人 | 中 |
-| Assignee | 总部 AE/R&D 工程师或中国 FAE | 仍是 TITAN 系统账号 | 高 |
-| Assignee | 总部 AE/R&D 工程师或中国 FAE | 未分配 / null | 中 |
+| Reporter | 通过关联工单 Assignee 识别到中国 FAE 范围 | 范围内 TANCS 票仍是 TITAN 系统账号 | 高 |
+| Assignee | 通过关联工单 Assignee 识别到中国 FAE 范围，或已修正为合法 owner | 范围内 TANCS 票仍是 TITAN 系统账号 | 高 |
+| Assignee | 已修正为合法 owner | 范围内 TANCS 票未分配 / null | 中 |
+| Scope | 关联工单 Assignee 是中国 FAE | 没有 Issue Links | 待人工确认 |
 
-中国 FAE 作为 Assignee 是合法的；总部 AE/R&D 作为 Assignee 也是合法的。Username 匹配必须大小写不敏感。
+中国 FAE 作为 Assignee 是合法的；总部 AE/R&D 作为 Assignee 也是合法的。对于 TITAN 占位的 TANCS 候选票，是否属于中国 FAE 范围只能通过关联工单 Assignee 判定。Username 匹配必须大小写不敏感。
 
 ### 中国 FAE 团队
 
@@ -191,10 +199,11 @@ GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&max
 - 总页数 / 总票数
 - 因不属于客户范围或没有 FAE 标签页而跳过的票
 - 任一标签页存在缺失字段的票
-- Reporter/Assignee 审查模式下的严重程度统计
+- Mode B 下的中国 FAE 需修正票、无 Issue Links 待确认票、已跳过非中国 FAE 范围汇总和示例
 
 ## 最近更新
 
+- Mode B 先通过关联工单 Assignee 确认中国 FAE 范围，再报告 TITAN 占位的 TANCS 票
 - FAE 标签页维持 3 个字段：`FAE_Label`、`FAE Pattern`、`Comment`
 - Field 标签页范围限定为 7 个检查字段，并明确排除 `Labels`、`SDK Version (TITAN)` 和 `Ref. H/W version`
 - 明确 TCS 和 TITAN 在本 skill 中指同一个 Jira 系统

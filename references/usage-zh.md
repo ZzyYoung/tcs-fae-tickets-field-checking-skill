@@ -6,7 +6,7 @@
 2. 提供审计用的 JQL（reporter、日期范围）。
 3. 告知 Claude 当前是**字段完整性审查**、**Reporter/Assignee 修正审查**还是**修改更新模式**。
 4. 字段完整性审查：Claude 会同时检查 Field 标签页和 FAE 标签页，但不检查 Field 标签页 Labels。
-5. Reporter/Assignee 修正审查：Claude 会扫描整个客户范围（`TANCS*` 加 `TMRCR`），找出仍保留 TITAN 系统账号的票。
+5. Reporter/Assignee 修正审查：Claude 会扫描 TANCS 候选票，再通过 Issue Links 只保留关联工单 Assignee 是中国 FAE 的票。
 6. 修改更新模式：Claude 只修改 FAE 标签页字段（需明确指示）。
 
 ## 系统与项目范围
@@ -55,7 +55,7 @@ project = TANCS5 AND created >= 2025-01-01 AND reporter in ("user@telechips.com"
 
 **Reporter/Assignee 修正审查：**
 ```jql
-project in (TITAN_Customer, TMRCR)
+project = TITAN_Customer
 AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
 AND created >= 2025-01-01
 ORDER BY created DESC
@@ -80,7 +80,7 @@ summary,customfield_10684,customfield_15009,customfield_15044,customfield_15045,
 Reporter/Assignee 修正审查获取：
 
 ```text
-summary,reporter,assignee,created
+summary,reporter,assignee,created,issuelinks
 ```
 
 ## 工作模式说明
@@ -96,9 +96,12 @@ summary,reporter,assignee,created
 
 ### Reporter/Assignee 修正审查
 - Claude 只读取，不修改票。
-- 使用上面的反向过滤 JQL，一次扫描整个客户范围（`TANCS*` 加 `TMRCR`）。
-- Reporter 应为中国 FAE 9 人之一；`titan` 为高严重程度，其他非中国 FAE reporter 为中严重程度。
-- Assignee 可以是总部 AE/R&D 或中国 FAE；只有 `titan` 是高严重程度，null/未分配是中严重程度。
+- 使用上面的反向过滤 JQL 扫描 TANCS 候选票。
+- 从 `outwardIssue` 和 `inwardIssue` 两种结构中提取关联工单 key；不要对关联工单 key 做前缀过滤。
+- 使用 `GET /rest/api/2/issue/<linked-key>?fields=assignee,summary` 拉取每个关联工单。
+- 只报告关联工单 Assignee username 属于中国 FAE 9 人之一的 TANCS 候选票。
+- 没有 Issue Links 的候选票放入待人工确认。
+- 只关联到非中国 FAE assignee 的候选票按非中国 FAE 范围跳过。
 - Username 匹配必须大小写不敏感。
 
 ### 修改更新模式（只用于自己的票或有明确权限时）
@@ -115,7 +118,7 @@ summary,reporter,assignee,created
 - 汇总数量（总票数、有缺失的票数、总缺失字段数）
 - 每张票的缺失字段明细（区分 Field 标签页和 FAE 标签页）
 - Reporter/Assignee 审查模式下的严重程度统计
-- 跳过的票列表（范围外或没有 FAE 标签页）
+- Mode B 下需列出中国 FAE 需修正票、无 Issue Links 待确认票、已跳过非中国 FAE 范围汇总和示例
 
 ## 注意事项
 

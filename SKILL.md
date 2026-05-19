@@ -39,6 +39,8 @@ Audit scope is restricted to customer-scope tickets only:
 8. Reporter is expected to be one of the 9 China FAE members. Other reporters need confirmation.
 9. Assignee `null` / empty is non-compliant and must be reported.
 10. Match Jira usernames case-insensitively, because Jira may return variants such as `williamTang` vs `williamtang`.
+11. In Mode B, do **not** report every TITAN-placeholder TANCS candidate directly; first confirm China FAE scope through linked issue Assignee.
+12. In Mode B, do **not** filter linked issue keys by prefix. Check all Issue Links, regardless of project/key format.
 
 ## Telechips Jira workflow context / Telechips Jira 工作流背景
 
@@ -104,8 +106,8 @@ Before doing anything, ensure all of the following are true:
 
 - Purpose: find TANCS tickets whose Reporter or Assignee still uses the TITAN system account, or whose Assignee is empty.
 - Grouping: do **not** group by person, because problem tickets may still have `reporter = titan`.
-- JQL example: `project in (TITAN_Customer, TMRCR) AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY) AND created >= 2025-01-01 ORDER BY created DESC`
-- Scope: scan the whole customer scope (`TANCS*` plus `TMRCR`) in one reverse-filter pass.
+- JQL example: `project = TITAN_Customer AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY) AND created >= 2025-01-01 ORDER BY created DESC`
+- Scope: first scan TANCS candidates, then decide whether each candidate belongs to China FAE only by checking linked issue Assignee through Issue Links.
 
 ---
 
@@ -361,40 +363,70 @@ Run this from the DevTools Console on `https://tcs.telechips.com`:
 
 ## Reporter/Assignee correction audit / Reporter/Assignee 修正审查
 
-Use this mode to find `TITAN_Customer` tickets whose Reporter or Assignee was not corrected after automatic creation.
+Use this mode to find candidate `TANCS*` tickets whose Reporter or Assignee was not corrected after automatic creation, then refine the result through Issue Links so non-China-FAE tickets are not falsely reported.
+
+### Linked issue ownership rule / 关联工单归属判定
+
+The only rule for deciding whether a TITAN-placeholder `TANCS*` ticket belongs to China FAE is:
+
+1. Read the candidate ticket's `issuelinks`.
+2. Extract every linked issue key from both `outwardIssue` and `inwardIssue`.
+3. Do **not** filter linked issue keys by prefix. The linked issue key prefix is irrelevant.
+4. Fetch every linked issue with `GET /rest/api/2/issue/<linked-key>?fields=assignee,summary`.
+5. If any linked issue Assignee username, lowercased, is one of the 9 China FAE usernames, report the candidate `TANCS*` ticket.
+6. If no linked issue Assignee is China FAE, skip the candidate ticket as out of China FAE scope.
+7. If the candidate ticket has no Issue Links, put it in an `UNCERTAIN - no issue links` section for manual review.
+
+判断一张 reporter/assignee 仍是 TITAN 的 `TANCS*` 票是否归中国 FAE 处理，唯一标准是：通过 Issue Links 找到关联工单（不限制 key 前缀），读取关联工单 Assignee；只要任一关联工单 Assignee 是中国 FAE 9 人之一，就报告该 TANCS 票，否则跳过。没有 Issue Links 的票放入“待人工确认”。
 
 ### Reverse-filter JQL / 反向过滤 JQL
 
-Scan the whole customer scope once:
+Scan candidate `TANCS*` tickets first:
 
 ```jql
-project in (TITAN_Customer, TMRCR)
+project = TITAN_Customer
 AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
 AND created >= 2025-01-01
 ORDER BY created DESC
 ```
 
-Fields to fetch:
+Fields to fetch for candidates:
 
 ```text
-summary,reporter,assignee,created
+summary,reporter,assignee,created,issuelinks
 ```
+
+For each linked issue, fetch:
+
+```text
+GET /rest/api/2/issue/<linked-issue-key>?fields=assignee,summary
+```
+
+### Ticket link structure / 工单关联结构
+
+Telechips Jira automatically creates a `TANCS*` customer-service/internal tracking ticket after a customer submits an issue. The `TANCS*` ticket is linked to the original/source issue through Jira Issue Links.
+
+- Source/linked issue: the original customer issue; its Assignee is the actual FAE owner.
+- `TANCS*` ticket: internal coordination ticket; initial Reporter/Assignee may both be the TITAN system account and may require manual China FAE correction.
+- Linked issue key prefix is not meaningful for this audit. Check all Issue Links.
+
+Telechips Jira 中，客户提交工单后系统会自动创建一张 `TANCS*` 客服/内部跟进票。这张 `TANCS*` 票通过 Issue Links 与原工单关联。原工单的 Assignee 才是真正负责跟进的 FAE。不要根据关联工单 key 前缀判断范围；必须检查所有 Issue Links。
 
 ### Expected values and severity / 期望值与严重程度
 
 | Field | Expected value | Non-compliant case | Severity |
 |---|---|---|---|
-| Reporter | One of the 9 China FAE members | Still TITAN system account | HIGH: 99% should be the FAE owner |
-| Reporter | One of the 9 China FAE members | Another non-China-FAE user | MEDIUM: needs confirmation |
-| Assignee | Headquarters AE/R&D engineer OR China FAE | Still TITAN system account | HIGH |
-| Assignee | Headquarters AE/R&D engineer OR China FAE | Unassigned / null | MEDIUM |
+| Reporter | China FAE identified via linked issue Assignee | Still TITAN system account on in-scope TANCS ticket | HIGH |
+| Assignee | China FAE identified via linked issue Assignee, or valid owner after correction | Still TITAN system account on in-scope TANCS ticket | HIGH |
+| Assignee | Valid owner after correction | Unassigned / null on in-scope TANCS ticket | MEDIUM |
+| Scope | Linked issue Assignee is China FAE | No Issue Links | UNCERTAIN |
 
 Important:
 
 - China FAE as Assignee is valid in the minority of cases where the FAE team can resolve the issue directly.
-- Headquarters AE/R&D as Assignee is the most common valid state.
-- Only TITAN system account or null Assignee is automatically non-compliant.
-- Reporter outside the 9 China FAE members is not automatically wrong, but must be reported for confirmation.
+- Headquarters AE/R&D as Assignee can be valid after correction, but Mode B's China FAE ownership decision for TITAN-placeholder `TANCS*` tickets must come only from linked issue Assignee.
+- Only report TITAN-placeholder candidate tickets if at least one linked issue Assignee is China FAE.
+- Do not report candidate tickets linked only to non-China-FAE assignees; summarize them as skipped/out of scope.
 
 ### China FAE team members / 中国 FAE 团队成员
 
@@ -416,7 +448,25 @@ TITAN system account:
 
 - Username: `titan`
 - Email: `titan@telechips.com`
+- Jira XML/API may also show `system.titan@telechips.com` or display name `TITAN`.
 - Meaning: placeholder account used by automatic ticket creation.
+
+### Report format / 报告格式
+
+Mode B reports must contain three sections:
+
+1. **Tickets China FAE needs to fix**
+   - TANCS ticket key
+   - Summary
+   - Current Reporter
+   - Current Assignee
+   - Matched linked issue key
+   - Recommended Reporter/Assignee: linked issue Assignee, one of China FAE 9
+   - Created date
+2. **Uncertain - no issue links**
+   - Tickets with no Issue Links; manual review required.
+3. **Skipped - out of China FAE scope**
+   - Summary count and first 3 examples only to avoid noisy reports.
 
 ### Browser Console script / 浏览器 Console 脚本
 
@@ -428,16 +478,15 @@ Run this from the DevTools Console on `https://tcs.telechips.com`:
     'williamtang', 'hmyang', 'shzhzeng', 'zyzhong', 'jingoust',
     'chris.hsieh', 'richard.li', 'simon.sun', 'junkai.he'
   ];
-
   const TITAN_ACCOUNT = 'titan';
 
   const jql = encodeURIComponent(
-    'project in (TITAN_Customer, TMRCR) ' +
+    'project = TITAN_Customer ' +
     'AND (reporter in ("' + TITAN_ACCOUNT + '") OR assignee in ("' + TITAN_ACCOUNT + '") OR assignee is EMPTY) ' +
     'AND created >= 2025-01-01 ' +
     'ORDER BY created DESC'
   );
-  const fields = 'summary,reporter,assignee,created';
+  const fields = 'summary,reporter,assignee,created,issuelinks';
 
   let allIssues = [], startAt = 0;
   while (true) {
@@ -448,42 +497,93 @@ Run this from the DevTools Console on `https://tcs.telechips.com`:
     startAt += 50;
   }
 
-  const result = allIssues.map(issue => {
-    const f = issue.fields;
-    const problems = [];
-    let highSeverity = false;
+  console.log(`Step 1: ${allIssues.length} candidate TANCS tickets`);
 
-    const reporterName = f.reporter ? f.reporter.name : null;
-    if (!reporterName || reporterName.toLowerCase() === TITAN_ACCOUNT) {
-      problems.push('Reporter still TITAN');
-      highSeverity = true;
-    } else if (!CHINA_FAE_USERNAMES.includes(reporterName.toLowerCase())) {
-      problems.push('Reporter not in China FAE: ' + reporterName);
+  const inChinaScope = [];
+  const outOfScope = [];
+  const uncertain = [];
+
+  for (let i = 0; i < allIssues.length; i++) {
+    const issue = allIssues[i];
+    const links = issue.fields.issuelinks || [];
+
+    const linkedKeys = [];
+    for (const link of links) {
+      if (link.outwardIssue) linkedKeys.push(link.outwardIssue.key);
+      if (link.inwardIssue) linkedKeys.push(link.inwardIssue.key);
     }
 
-    if (!f.assignee) {
-      problems.push('Assignee unassigned');
-    } else if (f.assignee.name.toLowerCase() === TITAN_ACCOUNT) {
-      problems.push('Assignee still TITAN');
-      highSeverity = true;
+    if (linkedKeys.length === 0) {
+      uncertain.push({
+        key: issue.key,
+        summary: (issue.fields.summary || '').substring(0, 60),
+        reason: 'No issue links found',
+        created: issue.fields.created.substring(0, 10)
+      });
+      continue;
     }
 
-    return {
+    let belongsToChinaFAE = false;
+    let matched = null;
+    for (const linkedKey of linkedKeys) {
+      try {
+        const linkedResp = await fetch(`/rest/api/2/issue/${linkedKey}?fields=assignee,summary`);
+        if (!linkedResp.ok) {
+          console.warn(`Cannot fetch ${linkedKey}: ${linkedResp.status}`);
+          continue;
+        }
+        const linkedData = await linkedResp.json();
+        const linkedAssignee = linkedData.fields.assignee;
+        if (linkedAssignee && CHINA_FAE_USERNAMES.includes(linkedAssignee.name.toLowerCase())) {
+          belongsToChinaFAE = true;
+          matched = {
+            linkedKey,
+            linkedAssignee: linkedAssignee.displayName,
+            linkedAssigneeUsername: linkedAssignee.name
+          };
+          break;
+        }
+      } catch (e) {
+        console.warn(`Error fetching ${linkedKey}:`, e);
+      }
+    }
+
+    const result = {
       key: issue.key,
-      summary: f.summary && f.summary.substring(0, 60),
-      reporter: f.reporter ? f.reporter.displayName : '(none)',
-      assignee: f.assignee ? f.assignee.displayName : '(unassigned)',
-      created: f.created && f.created.substring(0, 10),
-      problems,
-      severity: highSeverity ? 'HIGH' : (problems.length > 0 ? 'MEDIUM' : 'OK')
+      summary: (issue.fields.summary || '').substring(0, 60),
+      reporter: issue.fields.reporter ? issue.fields.reporter.displayName : '(none)',
+      assignee: issue.fields.assignee ? issue.fields.assignee.displayName : '(unassigned)',
+      created: issue.fields.created.substring(0, 10),
+      linkedKeys: linkedKeys.join(', ')
     };
-  }).filter(r => r.problems.length > 0);
 
-  console.log(`Found ${result.length} tickets needing reporter/assignee fix`);
-  console.log('HIGH severity:', result.filter(r => r.severity === 'HIGH').length);
-  console.log('MEDIUM severity:', result.filter(r => r.severity === 'MEDIUM').length);
-  console.table(result);
-  return result;
+    if (belongsToChinaFAE) {
+      result.matchedLinkedKey = matched.linkedKey;
+      result.suggestedReporter = matched.linkedAssignee;
+      result.suggestedReporterUsername = matched.linkedAssigneeUsername;
+      inChinaScope.push(result);
+    } else {
+      outOfScope.push(result);
+    }
+
+    if ((i + 1) % 10 === 0) console.log(`  Processed ${i + 1}/${allIssues.length}`);
+  }
+
+  console.log(`\n===== Summary =====`);
+  console.log(`Total candidates: ${allIssues.length}`);
+  console.log(`In China FAE scope: ${inChinaScope.length}`);
+  console.log(`Out of scope: ${outOfScope.length}`);
+  console.log(`Uncertain (no links): ${uncertain.length}`);
+
+  console.log(`\n===== Tickets China FAE needs to fix =====`);
+  console.table(inChinaScope);
+
+  if (uncertain.length > 0) {
+    console.log(`\n===== Uncertain (manual review) =====`);
+    console.table(uncertain);
+  }
+
+  return { inChinaScope, outOfScope, uncertain };
 })();
 ```
 

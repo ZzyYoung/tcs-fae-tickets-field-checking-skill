@@ -6,7 +6,7 @@
 2. Provide the JQL for the audit (reporter, date range).
 3. Tell Claude whether this is field completeness audit, Reporter/Assignee correction audit, or edit/update mode.
 4. For field completeness: Claude will audit both the Field tab AND the FAE tab, excluding Field Tab Labels.
-5. For Reporter/Assignee correction: Claude will scan the whole TITAN_Customer project for TITAN system account leftovers.
+5. For Reporter/Assignee correction: Claude will scan TANCS candidates, then use Issue Links to keep only tickets whose linked issue Assignee is China FAE.
 6. For edit/update: Claude will only update FAE tab fields (as instructed).
 
 ## System and project scope
@@ -55,7 +55,7 @@ If the JQL is broad, still filter fetched results to `TANCS*` and `TMRCR` before
 
 **Reporter/Assignee correction audit:**
 ```jql
-project in (TITAN_Customer, TMRCR)
+project = TITAN_Customer
 AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
 AND created >= 2025-01-01
 ORDER BY created DESC
@@ -80,7 +80,7 @@ Authentication options: browser Console on `tcs.telechips.com`, PAT if supported
 For Reporter/Assignee correction audits, fetch:
 
 ```text
-summary,reporter,assignee,created
+summary,reporter,assignee,created,issuelinks
 ```
 
 ## Audit modes
@@ -96,9 +96,12 @@ summary,reporter,assignee,created
 
 ### Reporter/Assignee correction audit
 - Claude inspects tickets without modifying them.
-- Use the reverse-filter JQL above and scan all TITAN_Customer tickets at once.
-- Reporter should be one of the 9 China FAE members; `titan` is HIGH severity and any other non-China-FAE reporter is MEDIUM severity.
-- Assignee may be headquarters AE/R&D or China FAE; only `titan` is HIGH severity and null/unassigned is MEDIUM severity.
+- Use the reverse-filter JQL above to scan TANCS candidates.
+- Extract linked issue keys from both `outwardIssue` and `inwardIssue`; do not filter linked issue keys by prefix.
+- Fetch each linked issue with `GET /rest/api/2/issue/<linked-key>?fields=assignee,summary`.
+- Report only TANCS candidates whose linked issue Assignee username is one of the 9 China FAE members.
+- Put candidates with no Issue Links in an uncertain/manual-review section.
+- Skip candidates linked only to non-China-FAE assignees as out of China FAE scope.
 - Match usernames case-insensitively.
 
 ### Edit/update (only for your own tickets or with explicit permission)
@@ -115,7 +118,7 @@ The audit report includes:
 - Summary counts
 - Per-ticket breakdown of missing fields (Field tab vs FAE tab)
 - Reporter/Assignee severity counts when that audit mode is used
-- List of skipped tickets (outside scope or no FAE tab)
+- For Mode B: in-scope China FAE tickets to fix, uncertain tickets with no Issue Links, and skipped out-of-scope summary/examples
 
 ## Tips
 

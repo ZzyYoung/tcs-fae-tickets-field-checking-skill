@@ -23,9 +23,9 @@ This skill supports two audit modes plus one edit workflow:
    - Prefer high-efficiency read-only inspection for large audits
 
 2. **Reporter/Assignee correction audit**
-   - Scan all `TITAN_Customer` tickets in one pass
-   - Find tickets whose Reporter or Assignee still uses the TITAN system account
-   - Find tickets with empty Assignee
+   - Scan `TITAN_Customer` TANCS candidates whose Reporter/Assignee still uses the TITAN system account or whose Assignee is empty
+   - Use Issue Links to check the linked issue Assignee before reporting
+   - Report only candidates whose linked issue Assignee is one of the 9 China FAE members
    - Do not group by reporter because problem tickets may still have `reporter = titan`
 
 3. **Edit/update mode**
@@ -97,10 +97,10 @@ Note: Jira metadata contains two fields named `git/repo command` (`customfield_1
 
 ## Reporter/Assignee correction audit
 
-Use this JQL to scan all problem candidates in one pass:
+Use this JQL to scan candidate TANCS tickets:
 
 ```jql
-project in (TITAN_Customer, TMRCR)
+project = TITAN_Customer
 AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
 AND created >= 2025-01-01
 ORDER BY created DESC
@@ -109,19 +109,27 @@ ORDER BY created DESC
 Fetch fields:
 
 ```text
-summary,reporter,assignee,created
+summary,reporter,assignee,created,issuelinks
 ```
+
+Then extract linked issue keys from both `outwardIssue` and `inwardIssue`, without any linked-key prefix filter. Fetch each linked issue with:
+
+```text
+GET /rest/api/2/issue/<linked-issue-key>?fields=assignee,summary
+```
+
+Only report the TANCS candidate when at least one linked issue Assignee username, lowercased, is in the China FAE list. If no Issue Links exist, put the ticket in an `UNCERTAIN - no issue links` section for manual review. If linked issue Assignees are not China FAE, skip the ticket as out of China FAE scope.
 
 Judgment rules:
 
 | Field | Expected value | Non-compliant case | Severity |
 |---|---|---|---|
-| Reporter | One of the 9 China FAE members | Still TITAN system account | HIGH |
-| Reporter | One of the 9 China FAE members | Another non-China-FAE user | MEDIUM |
-| Assignee | Headquarters AE/R&D engineer OR China FAE | Still TITAN system account | HIGH |
-| Assignee | Headquarters AE/R&D engineer OR China FAE | Unassigned / null | MEDIUM |
+| Reporter | China FAE identified via linked issue Assignee | Still TITAN system account on in-scope TANCS ticket | HIGH |
+| Assignee | China FAE identified via linked issue Assignee, or valid owner after correction | Still TITAN system account on in-scope TANCS ticket | HIGH |
+| Assignee | Valid owner after correction | Unassigned / null on in-scope TANCS ticket | MEDIUM |
+| Scope | Linked issue Assignee is China FAE | No Issue Links | UNCERTAIN |
 
-China FAE assignee is valid; headquarters AE/R&D assignee is also valid. Match usernames case-insensitively.
+China FAE assignee is valid; headquarters AE/R&D assignee is also valid. For TITAN-placeholder TANCS candidates, the China FAE ownership decision must come from linked issue Assignee only. Match usernames case-insensitively.
 
 ### China FAE team
 
@@ -193,10 +201,11 @@ Recommended audit report includes:
 - Total pages / total tickets
 - Skipped tickets outside customer scope or with no FAE tab
 - Tickets with missing required fields in either tab
-- Reporter/Assignee audit severity counts when that mode is requested
+- For Mode B: China FAE tickets to fix, uncertain tickets with no Issue Links, and skipped out-of-scope summary/examples
 
 ## Recent updates
 
+- Refined Mode B to confirm China FAE scope through linked issue Assignee lookup before reporting TITAN-placeholder TANCS tickets
 - Kept FAE tab scope at 3 fields: `FAE_Label`, `FAE Pattern`, `Comment`
 - Restricted Field tab scope to 7 checked fields and explicitly excluded `Labels`, `SDK Version (TITAN)`, and `Ref. H/W version`
 - Clarified that TCS and TITAN refer to the same Jira system for this skill
