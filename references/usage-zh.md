@@ -151,7 +151,7 @@ summary,reporter,assignee,created,issuelinks
 | 담당자 | Missing 개수 | Missing Ticket List | In-scope |
 |---|---:|---|---:|
 
-如果要求 “Only Titan Issue”，只汇总 `TANCS*`，排除 `TMRCR`。
+如果要求 “Only Titan Issue”，仍然按标准客户范围汇总 `TANCS*` 和 `TMRCR-*`。只有用户明确要求一次性的 TANCS-only 报告时，才排除 `TMRCR`。
 
 ## 注意事项
 

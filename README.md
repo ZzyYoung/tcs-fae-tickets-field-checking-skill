@@ -155,7 +155,7 @@ GET https://tcs.telechips.com/rest/api/2/search?jql=<JQL>&fields=<field_ids>&max
 
 For faster missing-field exports, use JQL pre-filters. Option fields must include both `IS EMPTY` and `= None`; for example `cf[15044] IS EMPTY OR cf[15044] = None` for `Cause (Customer)`. FAE Tab `Comment` is `customfield_15201`, so use `cf[15201] IS EMPTY`, not Jira system comments.
 
-Always paginate REST results with `startAt=0,50,100...` until collected issues reach `total`. Do not trust a visible Jira page or XML/RSS export copy as the full filter result. For leader-friendly reports, provide a compact table with assignee/FAE, missing ticket count, missing ticket list, and in-scope ticket count; when requested as "Only Titan Issue", include only `TANCS*` and exclude `TMRCR`.
+Always paginate REST results with `startAt=0,50,100...` until collected issues reach `total`. Do not trust a visible Jira page or XML/RSS export copy as the full filter result. For leader-friendly reports, provide a compact table with assignee/FAE, missing ticket count, missing ticket list, and in-scope ticket count. Even when requested as "Only Titan Issue", keep the standard customer-scope rule and include both `TANCS*` and `TMRCR-*`; exclude `TMRCR` only if the user explicitly asks for a one-off TANCS-only report.
 
 Authentication options:
 

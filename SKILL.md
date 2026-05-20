@@ -322,7 +322,7 @@ Rules for this summary:
 - `Missing 개수` = number of tickets with at least one missing required field, not the number of missing field entries.
 - `Missing Ticket List` = issue keys only, grouped by FAE; use `-` when there are no missing tickets.
 - `In-scope` = number of checked in-scope Titan tickets for that FAE.
-- If the leader asks for **Only Titan Issue**, include only `TANCS*` tickets and exclude `TMRCR` / RnD-Cooperation Request from that specific report.
+- If the leader asks for **Only Titan Issue**, still keep the standard customer-scope rule: include `TANCS*` tickets and `TMRCR-*` tickets. Do not drop `TMRCR` unless the user explicitly requests a one-off TANCS-only report.
 - Keep detailed missing-field breakdown in a secondary section or attachment, not in the main summary table.
 
 ### Fixed field ID mapping / 固定字段 ID 映射

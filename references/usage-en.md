@@ -151,7 +151,7 @@ For management reports, put the compact table first:
 | 담당자 | Missing 개수 | Missing Ticket List | In-scope |
 |---|---:|---|---:|
 
-When "Only Titan Issue" is requested, summarize only `TANCS*` tickets and exclude `TMRCR`.
+When "Only Titan Issue" is requested, still use the standard customer-scope rule and summarize both `TANCS*` and `TMRCR-*`. Exclude `TMRCR` only if the user explicitly requests a one-off TANCS-only report.
 
 ## Tips
 
