@@ -39,8 +39,8 @@ Audit scope is restricted to customer-scope tickets only:
 8. Reporter is expected to be one of the 9 China FAE members. Other reporters need confirmation.
 9. Assignee `null` / empty is non-compliant and must be reported.
 10. Match Jira usernames case-insensitively, because Jira may return variants such as `williamTang` vs `williamtang`.
-11. In Mode B, do **not** report every TITAN-placeholder TANCS candidate directly; first confirm China FAE scope through linked issue Assignee.
-12. In Mode B, do **not** filter linked issue keys by prefix. Check all Issue Links, regardless of project/key format.
+11. Do **not** use the older broad correction rule that included OR-based TITAN or empty-assignee candidates. The current required correction audit starts from TCS tickets where both Reporter and Assignee are TITAN.
+12. Do **not** report a TCS TITAN/TITAN ticket just because it has Issue Links. It must have `Issue Links -> links to -> TITAN Issue`, and the linked TITAN Issue Assignee must be `Unassigned` or one of the 9 China FAE members.
 
 ## Telechips Jira workflow context / Telechips Jira 工作流背景
 
@@ -92,22 +92,23 @@ Before doing anything, ensure all of the following are true:
 3. 需要处理的筛选条件或 JQL 能在该浏览器会话中正常打开。
 4. 批量处理时，优先使用 issue navigator / split view，并保持当前登录态。
 
-## Supported audit modes / 支持的两种审查模式
+## Required audit workflow / 必做审查流程
 
-### Mode A: Field completeness audit / 模式 A：字段完整性审查
+Do not treat the workflow as two optional modes. Every check-only audit using this skill must run both parts in this order and show both in the report:
 
-- Purpose: check whether required **FAE Tab** and **Field Tab** fields are filled.
-- Grouping: usually grouped by reporter / China FAE member.
-- JQL example: `reporter in ("user@telechips.com") AND created >= 2025-01-01 ORDER BY created DESC`
-- Scope: include all `TANCS*` prefixes and `TMRCR`; skip non-scope projects.
-- Field Tab `Labels` is ignored and should not be reported as missing.
-
-### Mode B: Reporter/Assignee correction audit / 模式 B：Reporter/Assignee 修正审查
-
-- Purpose: find TANCS tickets whose Reporter or Assignee still uses the TITAN system account, or whose Assignee is empty.
-- Grouping: do **not** group by person, because problem tickets may still have `reporter = titan`.
-- JQL example: `project = TITAN_Customer AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY) AND created >= 2025-01-01 ORDER BY created DESC`
-- Scope: first scan TANCS candidates, then decide whether each candidate belongs to China FAE only by checking linked issue Assignee through Issue Links.
+1. **Field completeness audit / 字段完整性审查**
+   - Check required **FAE Tab** and **Field Tab** fields.
+   - Usually group by reporter / China FAE member.
+   - Example JQL: `reporter in ("user@telechips.com") AND created >= 2025-01-01 ORDER BY created DESC`.
+   - Scope: include all `TANCS*` prefixes and `TMRCR`; skip non-scope projects.
+   - Field Tab `Labels` is ignored and must not be reported as missing.
+2. **Reporter/Assignee TITAN linked-assignee audit / Reporter/Assignee TITAN 关联负责人审查**
+   - Run after the field completeness audit every time, even if the user only asks for the missing-field report.
+   - TCS ticket itself must have `Reporter = TITAN` and `Assignee = TITAN` (treat `titan`, `system.titan@telechips.com`, and display name `TITAN` as TITAN).
+   - The TCS ticket page must contain `Issue Links -> links to -> TITAN Issue: <key>`.
+   - Open each linked TITAN Issue and inspect its Assignee.
+   - Report only if the linked TITAN Issue Assignee is `Unassigned` or one of the 9 China FAE members.
+   - Skip linked TITAN Issues assigned to headquarters AE/R&D or any other non-China-FAE user.
 
 ---
 
@@ -440,233 +441,81 @@ Run this from the DevTools Console on `https://tcs.telechips.com`:
 
 ---
 
-## Reporter/Assignee correction audit / Reporter/Assignee 修正审查
+## Reporter/Assignee TITAN linked-assignee audit / Reporter/Assignee TITAN 关联负责人审查
 
-Use this mode to find candidate `TANCS*` tickets whose Reporter or Assignee was not corrected after automatic creation, then refine the result through Issue Links so non-China-FAE tickets are not falsely reported.
+This audit is mandatory after the field completeness audit. It replaces the older broad correction logic. Do not label it as an optional mode in reports; include it as a required second section.
 
-### Linked issue ownership rule / 关联工单归属判定
+### Rule / 规则
 
-The only rule for deciding whether a TITAN-placeholder `TANCS*` ticket belongs to China FAE is:
+Report a ticket only when all conditions are true:
 
-1. Read the candidate ticket's `issuelinks`.
-2. Extract every linked issue key from both `outwardIssue` and `inwardIssue`.
-3. Do **not** filter linked issue keys by prefix. The linked issue key prefix is irrelevant.
-4. Fetch every linked issue with `GET /rest/api/2/issue/<linked-key>?fields=assignee,summary`.
-5. If any linked issue Assignee username, lowercased, is one of the 9 China FAE usernames, report the candidate `TANCS*` ticket.
-6. If no linked issue Assignee is China FAE, skip the candidate ticket as out of China FAE scope.
-7. If the candidate ticket has no Issue Links, put it in an `UNCERTAIN - no issue links` section for manual review.
+1. The TCS ticket itself has Reporter = TITAN and Assignee = TITAN. Treat `titan`, `system.titan@telechips.com`, and display name `TITAN` as TITAN.
+2. The TCS ticket page has `Issue Links -> links to -> TITAN Issue: <linked-key>`.
+3. The linked TITAN Issue page (`https://telechips-itan.atlassian.net/browse/<linked-key>`) has Assignee = `Unassigned` or one of the 9 China FAE members.
 
-判断一张 reporter/assignee 仍是 TITAN 的 `TANCS*` 票是否归中国 FAE 处理，唯一标准是：通过 Issue Links 找到关联工单（不限制 key 前缀），读取关联工单 Assignee；只要任一关联工单 Assignee 是中国 FAE 9 人之一，就报告该 TANCS 票，否则跳过。没有 Issue Links 的票放入“待人工确认”。
+Skip cases where the linked TITAN Issue is assigned to headquarters AE/R&D or any other non-China-FAE user. Do not include an uncertain/no-links bucket for this required audit unless the user explicitly asks for debugging evidence.
 
-### Reverse-filter JQL / 反向过滤 JQL
+中文规则：只报告同时满足以下条件的票：TCS 票本身 Reporter 和 Assignee 都是 TITAN；页面里有 `Issue Links -> links to -> TITAN Issue: <key>`；打开关联 TITAN Issue 后，其 Assignee 是 `Unassigned` 或中国 FAE 9 人之一。关联 TITAN Issue 分配给总部 AE/R&D 或其他非中国 FAE 时跳过。
 
-Scan candidate `TANCS*` tickets first:
+### Preferred JQL / 推荐 JQL
 
 ```jql
-project = TITAN_Customer
-AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
-AND created >= 2025-01-01
+reporter = "system.titan@telechips.com"
+AND assignee = "system.titan@telechips.com"
 ORDER BY created DESC
 ```
 
-Fields to fetch for candidates:
+If Jira accepts the shorter username, `reporter = titan AND assignee = titan` is also acceptable. Keep scope filters consistent with the report context when needed, but do not drop `TANCS*` variants or `TMRCR-*` from the main field audit.
 
-```text
-summary,reporter,assignee,created,issuelinks
-```
+### How to collect / 如何抓取
 
-For each linked issue, fetch:
+Use the most reliable authenticated method available:
 
-```text
-GET /rest/api/2/issue/<linked-issue-key>?fields=assignee,summary
-```
+- Preferred when available: Jira REST/search or issue navigator APIs with full pagination.
+- If REST/XML/export is blocked, use the logged-in browser page/DOM approach. This is allowed and often necessary. Do not read, copy, or export browser cookies; let the logged-in browser session carry authentication naturally.
 
-### Ticket link structure / 工单关联结构
+Browser/DOM fallback procedure:
 
-Telechips Jira automatically creates a `TANCS*` customer-service/internal tracking ticket after a customer submits an issue. The `TANCS*` ticket is linked to the original/source issue through Jira Issue Links.
-
-- Source/linked issue: the original customer issue; its Assignee is the actual FAE owner.
-- `TANCS*` ticket: internal coordination ticket; initial Reporter/Assignee may both be the TITAN system account and may require manual China FAE correction.
-- Linked issue key prefix is not meaningful for this audit. Check all Issue Links.
-
-Telechips Jira 中，客户提交工单后系统会自动创建一张 `TANCS*` 客服/内部跟进票。这张 `TANCS*` 票通过 Issue Links 与原工单关联。原工单的 Assignee 才是真正负责跟进的 FAE。不要根据关联工单 key 前缀判断范围；必须检查所有 Issue Links。
-
-### Expected values and severity / 期望值与严重程度
-
-| Field | Expected value | Non-compliant case | Severity |
-|---|---|---|---|
-| Reporter | China FAE identified via linked issue Assignee | Still TITAN system account on in-scope TANCS ticket | HIGH |
-| Assignee | China FAE identified via linked issue Assignee, or valid owner after correction | Still TITAN system account on in-scope TANCS ticket | HIGH |
-| Assignee | Valid owner after correction | Unassigned / null on in-scope TANCS ticket | MEDIUM |
-| Scope | Linked issue Assignee is China FAE | No Issue Links | UNCERTAIN |
-
-Important:
-
-- China FAE as Assignee is valid in the minority of cases where the FAE team can resolve the issue directly.
-- Headquarters AE/R&D as Assignee can be valid after correction, but Mode B's China FAE ownership decision for TITAN-placeholder `TANCS*` tickets must come only from linked issue Assignee.
-- Only report TITAN-placeholder candidate tickets if at least one linked issue Assignee is China FAE.
-- Do not report candidate tickets linked only to non-China-FAE assignees; summarize them as skipped/out of scope.
+1. Open Issue Navigator with the JQL above.
+2. Collect all result pages (`startIndex=0,50,100...`) until there are no more issue rows.
+3. For each TCS candidate, open the issue page and read the visible `Issue Links` section.
+4. Extract only links shown as `links to` with label `TITAN Issue: <linked-key>`.
+5. Open `https://telechips-itan.atlassian.net/browse/<linked-key>`.
+6. Read the linked TITAN Issue Assignee from the page/DOM.
+7. Keep only `Unassigned` or China FAE assignees; skip all others.
 
 ### China FAE team members / 中国 FAE 团队成员
 
-Use username first when auditing. Jira REST API returns `reporter.name` and `assignee.name` as username strings. Compare usernames case-insensitively.
+Use username first when available. Browser pages may expose display names, so match display names case-insensitively too.
 
 | Username | Display Name | Email |
 |---|---|---|
-| `williamTang` | William Tang | williamTang@telechips.com |
-| `hmyang` | HongMing Yang | hmyang@telechips.com |
-| `shzhzeng` | ShengZhou Zeng | shzhzeng@telechips.com |
-| `zyzhong` | ZhiYong Zhong | zyzhong@telechips.com |
-| `jingoust` | 박정진 (JJ PARK) | jingoust@telechips.com |
-| `Chris.Hsieh` | Chris Hsieh | Chris.Hsieh@telechips.com |
-| `richard.li` | Richard Li | richard.li@telechips.com |
-| `simon.sun` | Simon Sun | simon.sun@telechips.com |
-| `junkai.he` | Junkai He | junkai.he@telechips.com |
+| williamTang | William Tang | williamTang@telechips.com |
+| hmyang | HongMing Yang | hmyang@telechips.com |
+| shzhzeng | ShengZhou Zeng | shzhzeng@telechips.com |
+| zyzhong | ZhiYong Zhong | zyzhong@telechips.com |
+| jingoust | 박정진 (JJ PARK) | jingoust@telechips.com |
+| Chris.Hsieh | Chris Hsieh | Chris.Hsieh@telechips.com |
+| richard.li | Richard Li | richard.li@telechips.com |
+| simon.sun | Simon Sun | simon.sun@telechips.com |
+| junkai.he | Junkai He | junkai.he@telechips.com |
 
-TITAN system account:
+### Report section / 报告章节
 
-- Username: `titan`
-- Email: `titan@telechips.com`
-- Jira XML/API may also show `system.titan@telechips.com` or display name `TITAN`.
-- Meaning: placeholder account used by automatic ticket creation.
+Always include this section after the field completeness results, even when there are zero findings. Include:
 
-### Report format / 报告格式
+- TCS Ticket key and link
+- Linked TITAN Issue key and link
+- Finding (`Unassigned` or `China FAE: <name>`)
+- Linked TITAN Issue Assignee
+- TCS Summary
 
-Mode B reports must contain three sections:
+Example table:
 
-1. **Tickets China FAE needs to fix**
-   - TANCS ticket key
-   - Summary
-   - Current Reporter
-   - Current Assignee
-   - Matched linked issue key
-   - Recommended Reporter/Assignee: linked issue Assignee, one of China FAE 9
-   - Created date
-2. **Uncertain - no issue links**
-   - Tickets with no Issue Links; manual review required.
-3. **Skipped - out of China FAE scope**
-   - Summary count and first 3 examples only to avoid noisy reports.
-
-### Browser Console script / 浏览器 Console 脚本
-
-Run this from the DevTools Console on `https://tcs.telechips.com`:
-
-```javascript
-(async () => {
-  const CHINA_FAE_USERNAMES = [
-    'williamtang', 'hmyang', 'shzhzeng', 'zyzhong', 'jingoust',
-    'chris.hsieh', 'richard.li', 'simon.sun', 'junkai.he'
-  ];
-  const TITAN_ACCOUNT = 'titan';
-
-  const jql = encodeURIComponent(
-    'project = TITAN_Customer ' +
-    'AND (reporter in ("' + TITAN_ACCOUNT + '") OR assignee in ("' + TITAN_ACCOUNT + '") OR assignee is EMPTY) ' +
-    'AND created >= 2025-01-01 ' +
-    'ORDER BY created DESC'
-  );
-  const fields = 'summary,reporter,assignee,created,issuelinks';
-
-  let allIssues = [], startAt = 0;
-  while (true) {
-    const resp = await fetch(`/rest/api/2/search?jql=${jql}&fields=${fields}&maxResults=50&startAt=${startAt}`);
-    const data = await resp.json();
-    allIssues = allIssues.concat(data.issues);
-    if (allIssues.length >= data.total) break;
-    startAt += 50;
-  }
-
-  console.log(`Step 1: ${allIssues.length} candidate TANCS tickets`);
-
-  const inChinaScope = [];
-  const outOfScope = [];
-  const uncertain = [];
-
-  for (let i = 0; i < allIssues.length; i++) {
-    const issue = allIssues[i];
-    const links = issue.fields.issuelinks || [];
-
-    const linkedKeys = [];
-    for (const link of links) {
-      if (link.outwardIssue) linkedKeys.push(link.outwardIssue.key);
-      if (link.inwardIssue) linkedKeys.push(link.inwardIssue.key);
-    }
-
-    if (linkedKeys.length === 0) {
-      uncertain.push({
-        key: issue.key,
-        summary: (issue.fields.summary || '').substring(0, 60),
-        reason: 'No issue links found',
-        created: issue.fields.created.substring(0, 10)
-      });
-      continue;
-    }
-
-    let belongsToChinaFAE = false;
-    let matched = null;
-    for (const linkedKey of linkedKeys) {
-      try {
-        const linkedResp = await fetch(`/rest/api/2/issue/${linkedKey}?fields=assignee,summary`);
-        if (!linkedResp.ok) {
-          console.warn(`Cannot fetch ${linkedKey}: ${linkedResp.status}`);
-          continue;
-        }
-        const linkedData = await linkedResp.json();
-        const linkedAssignee = linkedData.fields.assignee;
-        if (linkedAssignee && CHINA_FAE_USERNAMES.includes(linkedAssignee.name.toLowerCase())) {
-          belongsToChinaFAE = true;
-          matched = {
-            linkedKey,
-            linkedAssignee: linkedAssignee.displayName,
-            linkedAssigneeUsername: linkedAssignee.name
-          };
-          break;
-        }
-      } catch (e) {
-        console.warn(`Error fetching ${linkedKey}:`, e);
-      }
-    }
-
-    const result = {
-      key: issue.key,
-      summary: (issue.fields.summary || '').substring(0, 60),
-      reporter: issue.fields.reporter ? issue.fields.reporter.displayName : '(none)',
-      assignee: issue.fields.assignee ? issue.fields.assignee.displayName : '(unassigned)',
-      created: issue.fields.created.substring(0, 10),
-      linkedKeys: linkedKeys.join(', ')
-    };
-
-    if (belongsToChinaFAE) {
-      result.matchedLinkedKey = matched.linkedKey;
-      result.suggestedReporter = matched.linkedAssignee;
-      result.suggestedReporterUsername = matched.linkedAssigneeUsername;
-      inChinaScope.push(result);
-    } else {
-      outOfScope.push(result);
-    }
-
-    if ((i + 1) % 10 === 0) console.log(`  Processed ${i + 1}/${allIssues.length}`);
-  }
-
-  console.log(`\n===== Summary =====`);
-  console.log(`Total candidates: ${allIssues.length}`);
-  console.log(`In China FAE scope: ${inChinaScope.length}`);
-  console.log(`Out of scope: ${outOfScope.length}`);
-  console.log(`Uncertain (no links): ${uncertain.length}`);
-
-  console.log(`\n===== Tickets China FAE needs to fix =====`);
-  console.table(inChinaScope);
-
-  if (uncertain.length > 0) {
-    console.log(`\n===== Uncertain (manual review) =====`);
-    console.table(uncertain);
-  }
-
-  return { inChinaScope, outOfScope, uncertain };
-})();
-```
-
----
+| TCS Ticket | Linked TITAN Issue | Finding | Linked Assignee | TCS Summary |
+|---|---|---|---|---|
+| TANCS2-338 | HCKH434-3 | Unassigned | Unassigned | REV_0 회로 리뷰 요청 |
+| TANCS-4480 | TIM399B-232 | China FAE: HongMing Yang | HongMing Yang | Request for 2nd Source eMMC and DRAM Compatibility Confirmation |
 
 ## FAE Tab audit / FAE 标签页审计
 
@@ -724,7 +573,7 @@ Never use the pattern text as if it were the label.
 
 ## Combined audit workflow / 综合审计流程
 
-When performing a full audit (both FAE tab + Field tab), follow this sequence per ticket:
+When performing a full audit, first complete the field/FAE missing-field check per ticket, then run the required Reporter/Assignee TITAN linked-assignee audit as a separate report section. For the field/FAE check, follow this sequence per ticket:
 
 ```
 For each ticket:
@@ -741,7 +590,7 @@ For each ticket:
   5. Log: ticket key + list of all missing fields (Field tab + FAE tab)
 ```
 
-综合审计顺序（每张票）：
+综合审计时，先逐票完成字段/FAE 缺失检查，然后把必做的 Reporter/Assignee TITAN 关联负责人审查作为单独报告章节执行。字段/FAE 检查顺序如下：
 
 ```
 对每张票：
@@ -788,6 +637,7 @@ When returning results from an audit, include:
 6. **Field tab missing fields** — per ticket
 7. **FAE tab missing fields** — per ticket
 8. Summary table: ticket key | missing Field fields | missing FAE fields | total missing count
+9. **Reporter/Assignee TITAN linked-assignee findings** — include this section every time, even when zero
 
 检查类结果建议包含：
 
@@ -799,6 +649,7 @@ When returning results from an audit, include:
 6. **Field 标签页缺失字段**（按票列出）
 7. **FAE 标签页缺失字段**（按票列出）
 8. 汇总表：票号 | Field 缺失字段 | FAE 缺失字段 | 总缺失数
+9. **Reporter/Assignee TITAN 关联负责人审查结果** — 每次都要包含，即使结果为 0
 
 ### Example report output / 示例汇报格式
 

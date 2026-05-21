@@ -4,9 +4,9 @@
 
 1. 确认 Chrome 已打开，TITAN 已登录。
 2. 提供审计用的 JQL（reporter、日期范围）。
-3. 告知 Claude 当前是**字段完整性审查**、**Reporter/Assignee 修正审查**还是**修改更新模式**。
+3. 只检查类审计必须先做字段完整性审查，再做必需的 Reporter/Assignee TITAN 关联负责人审查。
 4. 字段完整性审查：Claude 会同时检查 Field 标签页和 FAE 标签页，但不检查 Field 标签页 Labels。
-5. Reporter/Assignee 修正审查：Claude 会扫描 TANCS 候选票，再通过 Issue Links 只保留关联工单 Assignee 是中国 FAE 的票。
+5. 关联负责人审查：Claude 只保留 Reporter=TITAN 且 Assignee=TITAN 的 TCS 票，再沿着 `Issue Links -> links to -> TITAN Issue` 打开关联 TITAN Issue；仅当关联 TITAN Issue Assignee 是 Unassigned 或中国 FAE 时报告。
 6. 修改更新模式：Claude 只修改 FAE 标签页字段（需明确指示）。
 
 ## 系统与项目范围
@@ -77,13 +77,13 @@ project = TANCS5 AND created >= 2025-01-01 AND reporter in ("user@telechips.com"
 
 如果 JQL 范围较宽，获取结果后仍然必须按 `TANCS*` 和 `TMRCR` 前缀过滤，再生成报告。
 
-**Reporter/Assignee 修正审查：**
+**Reporter/Assignee TITAN 关联负责人审查候选票：**
 ```jql
-project = TITAN_Customer
-AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
-AND created >= 2025-01-01
+reporter = "system.titan@telechips.com"
+AND assignee = "system.titan@telechips.com"
 ORDER BY created DESC
 ```
+然后逐张打开候选票，只保留存在 `Issue Links -> links to -> TITAN Issue: <key>` 的票；再打开关联 TITAN Issue，仅当其 Assignee 是 `Unassigned` 或中国 FAE 9 人之一时报告。
 
 ## REST API 快速审计
 
@@ -103,15 +103,15 @@ summary,customfield_10684,customfield_15009,customfield_15044,customfield_15045,
 
 认证方式：在 `tcs.telechips.com` 的浏览器 Console 执行、使用 PAT（如果支持）、或复制 `JSESSIONID` 作为 Cookie header。
 
-Reporter/Assignee 修正审查获取：
+Reporter/Assignee TITAN 关联负责人审查候选票获取：
 
 ```text
 summary,reporter,assignee,created,issuelinks
 ```
 
-## 工作模式说明
+## 必做审查流程
 
-### 字段完整性审查（推荐用于审计他人的票）
+### 字段完整性审查（第一步必做）
 - Claude 只读取，不修改票。
 - 同时检查 Field 标签页和 FAE 标签页的所有字段。
 - 忽略 Field 标签页 Labels。
@@ -120,15 +120,14 @@ summary,reporter,assignee,created,issuelinks
 - 不属于客户范围或没有 FAE 标签页的票直接跳过。
 - 记录票号和全部缺失字段。
 
-### Reporter/Assignee 修正审查
-- Claude 只读取，不修改票。
-- 使用上面的反向过滤 JQL 扫描 TANCS 候选票。
-- 从 `outwardIssue` 和 `inwardIssue` 两种结构中提取关联工单 key；不要对关联工单 key 做前缀过滤。
-- 使用 `GET /rest/api/2/issue/<linked-key>?fields=assignee,summary` 拉取每个关联工单。
-- 只报告关联工单 Assignee username 属于中国 FAE 9 人之一的 TANCS 候选票。
-- 没有 Issue Links 的候选票放入待人工确认。
-- 只关联到非中国 FAE assignee 的候选票按非中国 FAE 范围跳过。
-- Username 匹配必须大小写不敏感。
+### Reporter/Assignee TITAN 关联负责人审查
+- 每次字段完整性审查后都要作为第二步执行。
+- 候选 TCS 票必须 Reporter=TITAN 且 Assignee=TITAN。
+- 检查 TCS 页面是否存在 `Issue Links -> links to -> TITAN Issue: <key>`。
+- 打开每个关联 TITAN Issue 并读取 Assignee。
+- 只报告关联 TITAN Issue Assignee 是 `Unassigned` 或中国 FAE 9 人之一的票。
+- 关联 TITAN Issue 分配给总部 AE/R&D 或其他非中国 FAE 时跳过。
+- REST/XML/export 被拦截时允许使用浏览器页面/DOM 方法；不要读取或导出 Cookie。
 
 ### 修改更新模式（只用于自己的票或有明确权限时）
 - Claude 只修改 FAE 标签页字段。
@@ -143,8 +142,7 @@ summary,reporter,assignee,created,issuelinks
 审计报告包含：
 - 汇总数量（总票数、有缺失的票数、总缺失字段数）
 - 每张票的缺失字段明细（区分 Field 标签页和 FAE 标签页）
-- Reporter/Assignee 审查模式下的严重程度统计
-- Mode B 下需列出中国 FAE 需修正票、无 Issue Links 待确认票、已跳过非中国 FAE 范围汇总和示例
+- 每次都包含 Reporter/Assignee TITAN 关联负责人审查章节，即使结果为 0
 
 给领导看的管理报告，先放简洁汇总表：
 

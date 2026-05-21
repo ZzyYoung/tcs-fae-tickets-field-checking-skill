@@ -11,26 +11,17 @@
 
 ## 这个 skill 做什么
 
-它主要支持两种审查模式和一种修改场景：
+这个 skill 在只检查报告中始终按顺序执行两个必做审查部分，并保留一个修改场景：
 
 1. **字段完整性审查**
-   - 检查别人 reporter 名下的 Jira 票
-   - 同时检查 **FAE** 标签页和 **Field** 标签页字段
-   - 最终只返回票号和缺失字段
-   - 忽略 Field 标签页 `Labels`
-   - 大批量检查时优先使用高效率只读检查方式
-
-2. **Reporter/Assignee 修正审查**
-   - 扫描 `TITAN_Customer` 中 Reporter/Assignee 仍是 TITAN 系统账号或 Assignee 为空的 TANCS 候选票
-   - 通过 Issue Links 检查关联工单 Assignee 后再报告
-   - 只报告关联工单 Assignee 是中国 FAE 9 人之一的候选票
-   - 不按个人分组，因为问题票的 `reporter` 可能仍是 `titan`
-
-3. **修改更新模式**
-   - 从 JQL 过滤结果中打开你自己的 Jira 票
-   - 修改 FAE 相关内容前必须先进入 **FAE** 标签页
-   - 安全填写或更新相关字段
-   - 更新后保持浏览器会话不被破坏
+   - 检查 FAE Tab 和 Field Tab 的必填字段
+   - 按 reporter / FAE 人员分组
+2. **Reporter/Assignee TITAN 关联负责人审查**
+   - 字段审查后，扫描 TCS 票本身 Reporter 和 Assignee 都是 TITAN 的票
+   - 只保留页面中有 `Issue Links -> links to -> TITAN Issue` 的票
+   - 打开关联 TITAN Issue，只报告其 Assignee 是 `Unassigned` 或中国 FAE 9 人之一的票
+3. **修改更新场景**
+   - 只有用户明确要求且权限清楚时，才更新 FAE 标签页字段
 
 ## Telechips Jira 工作流背景
 
@@ -93,41 +84,33 @@
 
 注意：Jira metadata 中有两个字段都叫 `git/repo command`（`customfield_15008` 和 `customfield_15101`），Field 标签页实际显示的是 `customfield_15101`。
 
-## Reporter/Assignee 修正审查
+## Reporter/Assignee TITAN 关联负责人审查
 
-使用这个 JQL 扫描 TANCS 候选票：
+这个必做审查每次都在字段完整性审查之后执行，用来替换旧的宽泛修正规则。
+
+候选 TCS 票 JQL：
 
 ```jql
-project = TITAN_Customer
-AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
-AND created >= 2025-01-01
+reporter = "system.titan@telechips.com"
+AND assignee = "system.titan@telechips.com"
 ORDER BY created DESC
 ```
 
-获取字段：
+对每个候选票，检查 TCS 工单页面，只保留如下链接：
 
 ```text
-summary,reporter,assignee,created,issuelinks
+Issue Links -> links to -> TITAN Issue: <linked-key>
 ```
 
-然后从 `outwardIssue` 和 `inwardIssue` 两种结构里提取所有关联工单 key，不要对关联工单 key 做任何前缀过滤。逐个拉取关联工单：
+然后打开关联 TITAN Issue，例如：
 
 ```text
-GET /rest/api/2/issue/<linked-issue-key>?fields=assignee,summary
+https://telechips-itan.atlassian.net/browse/<linked-key>
 ```
 
-只有当至少一个关联工单 Assignee username（转小写后）属于中国 FAE 9 人名单时，才报告这张 TANCS 候选票。没有 Issue Links 的票放到 `UNCERTAIN - no issue links` / 待人工确认；关联工单 Assignee 不是中国 FAE 的票，作为非中国 FAE 范围跳过。
+只有当关联 TITAN Issue 的 Assignee 是 `Unassigned` 或中国 FAE 9 人之一时，才报告这张 TCS 票。关联 TITAN Issue 分配给总部 AE/R&D 或其他非中国 FAE 时跳过。
 
-判定规则：
-
-| 字段 | 期望值 | 不合规情况 | 严重程度 |
-|---|---|---|---|
-| Reporter | 通过关联工单 Assignee 识别到中国 FAE 范围 | 范围内 TANCS 票仍是 TITAN 系统账号 | 高 |
-| Assignee | 通过关联工单 Assignee 识别到中国 FAE 范围，或已修正为合法 owner | 范围内 TANCS 票仍是 TITAN 系统账号 | 高 |
-| Assignee | 已修正为合法 owner | 范围内 TANCS 票未分配 / null | 中 |
-| Scope | 关联工单 Assignee 是中国 FAE | 没有 Issue Links | 待人工确认 |
-
-中国 FAE 作为 Assignee 是合法的；总部 AE/R&D 作为 Assignee 也是合法的。对于 TITAN 占位的 TANCS 候选票，是否属于中国 FAE 范围只能通过关联工单 Assignee 判定。Username 匹配必须大小写不敏感。
+优先使用 REST/search API 分页；如果 REST/XML/export 被拦截，可以使用已登录浏览器页面/DOM 方法。不要读取或导出浏览器 Cookie，让浏览器登录态自然完成认证。
 
 ### 中国 FAE 团队
 
@@ -203,16 +186,16 @@ REST 结果必须用 `startAt=0,50,100...` 分页，直到收集数量达到 `to
 - 总页数 / 总票数
 - 因不属于客户范围或没有 FAE 标签页而跳过的票
 - 任一标签页存在缺失字段的票
-- Mode B 下的中国 FAE 需修正票、无 Issue Links 待确认票、已跳过非中国 FAE 范围汇总和示例
+- Reporter/Assignee TITAN 关联负责人审查结果，即使结果为 0 也要体现
 
 ## 最近更新
 
-- Mode B 先通过关联工单 Assignee 确认中国 FAE 范围，再报告 TITAN 占位的 TANCS 票
+- 用必做的 Reporter/Assignee TITAN 关联负责人审查替换旧的宽泛修正规则
 - FAE 标签页维持 3 个字段：`FAE_Label`、`FAE Pattern`、`Comment`
 - Field 标签页范围限定为 7 个检查字段，并明确排除 `Labels`、`SDK Version (TITAN)` 和 `Ref. H/W version`
 - 明确 TCS 和 TITAN 在本 skill 中指同一个 Jira 系统
 - 增加固定 customfield ID 映射和 REST API 快速审计说明
-- 增加 Reporter/Assignee 修正审查，用于找出仍使用 TITAN 系统账号的票
+- 增加必做的 Reporter/Assignee TITAN 关联负责人审查，用于找出仍使用 TITAN 系统账号且关联负责人需要中国 FAE 处理的票
 - 保留并延续当前的双标签页审计模型，也就是同时检查 **Field** 和 **FAE** 两个标签页
 - 明确要求汇报结果区分缺失项来自 Field 标签页还是 FAE 标签页
 

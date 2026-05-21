@@ -13,26 +13,17 @@ An OpenClaw skill for auditing and updating Telechips TITAN Jira tickets on `tcs
 
 ## What this skill does
 
-This skill supports two audit modes plus one edit workflow:
+This skill always runs two required audit parts for check-only reports, plus one edit/update scenario:
 
 1. **Field completeness audit**
-   - Audit another reporter's Jira tickets
-   - Check both **FAE** tab fields and **Field** tab fields
-   - Return only ticket keys and the missing fields
-   - Ignore Field Tab `Labels`
-   - Prefer high-efficiency read-only inspection for large audits
-
-2. **Reporter/Assignee correction audit**
-   - Scan `TITAN_Customer` TANCS candidates whose Reporter/Assignee still uses the TITAN system account or whose Assignee is empty
-   - Use Issue Links to check the linked issue Assignee before reporting
-   - Report only candidates whose linked issue Assignee is one of the 9 China FAE members
-   - Do not group by reporter because problem tickets may still have `reporter = titan`
-
-3. **Edit/update mode**
-   - Open your own Jira tickets from a filtered JQL result
-   - Enter the **FAE** tab before editing FAE-related content
-   - Fill or update relevant fields safely
-   - Keep browser session intact after updates
+   - Check required fields in the FAE Tab and Field Tab
+   - Group by reporter / FAE person
+2. **Reporter/Assignee TITAN linked-assignee audit**
+   - After the field audit, scan TCS tickets whose Reporter and Assignee are both TITAN
+   - Keep only tickets with `Issue Links -> links to -> TITAN Issue`
+   - Open the linked TITAN Issue and report only when its Assignee is `Unassigned` or one of the 9 China FAE members
+3. **Edit/update scenario**
+   - Only update FAE tab fields when the user explicitly asks and permission is clear
 
 ## Telechips Jira workflow context
 
@@ -95,41 +86,33 @@ Do not audit Field Tab `Labels`, `SDK Version (TITAN)`, `Ref. H/W version`, or o
 
 Note: Jira metadata contains two fields named `git/repo command` (`customfield_15008` and `customfield_15101`). The Field tab uses `customfield_15101`.
 
-## Reporter/Assignee correction audit
+## Reporter/Assignee TITAN linked-assignee audit
 
-Use this JQL to scan candidate TANCS tickets:
+This required audit runs after the field completeness audit every time. It replaces the older broad correction rule.
+
+Candidate TCS ticket JQL:
 
 ```jql
-project = TITAN_Customer
-AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
-AND created >= 2025-01-01
+reporter = "system.titan@telechips.com"
+AND assignee = "system.titan@telechips.com"
 ORDER BY created DESC
 ```
 
-Fetch fields:
+For each candidate, inspect the TCS issue page and keep only links shown as:
 
 ```text
-summary,reporter,assignee,created,issuelinks
+Issue Links -> links to -> TITAN Issue: <linked-key>
 ```
 
-Then extract linked issue keys from both `outwardIssue` and `inwardIssue`, without any linked-key prefix filter. Fetch each linked issue with:
+Then open the linked TITAN Issue, for example:
 
 ```text
-GET /rest/api/2/issue/<linked-issue-key>?fields=assignee,summary
+https://telechips-itan.atlassian.net/browse/<linked-key>
 ```
 
-Only report the TANCS candidate when at least one linked issue Assignee username, lowercased, is in the China FAE list. If no Issue Links exist, put the ticket in an `UNCERTAIN - no issue links` section for manual review. If linked issue Assignees are not China FAE, skip the ticket as out of China FAE scope.
+Report the TCS ticket only when the linked TITAN Issue Assignee is `Unassigned` or one of the 9 China FAE members. Skip linked TITAN Issues assigned to headquarters AE/R&D or any other non-China-FAE user.
 
-Judgment rules:
-
-| Field | Expected value | Non-compliant case | Severity |
-|---|---|---|---|
-| Reporter | China FAE identified via linked issue Assignee | Still TITAN system account on in-scope TANCS ticket | HIGH |
-| Assignee | China FAE identified via linked issue Assignee, or valid owner after correction | Still TITAN system account on in-scope TANCS ticket | HIGH |
-| Assignee | Valid owner after correction | Unassigned / null on in-scope TANCS ticket | MEDIUM |
-| Scope | Linked issue Assignee is China FAE | No Issue Links | UNCERTAIN |
-
-China FAE assignee is valid; headquarters AE/R&D assignee is also valid. For TITAN-placeholder TANCS candidates, the China FAE ownership decision must come from linked issue Assignee only. Match usernames case-insensitively.
+Use REST/search APIs with pagination when available. If REST/XML/export is blocked, use the logged-in browser page/DOM method. Do not read or export browser cookies; let the browser session carry authentication naturally.
 
 ### China FAE team
 
@@ -205,16 +188,16 @@ Recommended audit report includes:
 - Total pages / total tickets
 - Skipped tickets outside customer scope or with no FAE tab
 - Tickets with missing required fields in either tab
-- For Mode B: China FAE tickets to fix, uncertain tickets with no Issue Links, and skipped out-of-scope summary/examples
+- Reporter/Assignee TITAN linked-assignee findings, even when the finding count is zero
 
 ## Recent updates
 
-- Refined Mode B to confirm China FAE scope through linked issue Assignee lookup before reporting TITAN-placeholder TANCS tickets
+- Replaced the older broad correction audit with the required Reporter/Assignee TITAN linked-assignee audit
 - Kept FAE tab scope at 3 fields: `FAE_Label`, `FAE Pattern`, `Comment`
 - Restricted Field tab scope to 7 checked fields and explicitly excluded `Labels`, `SDK Version (TITAN)`, and `Ref. H/W version`
 - Clarified that TCS and TITAN refer to the same Jira system for this skill
 - Added fixed customfield ID mapping and REST API guidance for fast audits
-- Added Reporter/Assignee correction audit for tickets still using the TITAN system account
+- Added required Reporter/Assignee TITAN linked-assignee audit for tickets still using the TITAN system account
 - Kept the newer dual-tab audit model, which checks both **Field** and **FAE** tabs
 - Clarified that reports should explicitly show whether missing items come from the Field tab or the FAE tab
 

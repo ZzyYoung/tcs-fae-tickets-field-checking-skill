@@ -4,9 +4,9 @@
 
 1. Ensure Chrome is open and TITAN is logged in.
 2. Provide the JQL for the audit (reporter, date range).
-3. Tell Claude whether this is field completeness audit, Reporter/Assignee correction audit, or edit/update mode.
+3. For check-only audits, Claude must run field completeness first, then the required Reporter/Assignee TITAN linked-assignee audit.
 4. For field completeness: Claude will audit both the Field tab AND the FAE tab, excluding Field Tab Labels.
-5. For Reporter/Assignee correction: Claude will scan TANCS candidates, then use Issue Links to keep only tickets whose linked issue Assignee is China FAE.
+5. For the linked-assignee audit: Claude keeps only TCS tickets where Reporter=TITAN and Assignee=TITAN, then follows `Issue Links -> links to -> TITAN Issue` and reports only linked TITAN Issues whose Assignee is Unassigned or China FAE.
 6. For edit/update: Claude will only update FAE tab fields (as instructed).
 
 ## System and project scope
@@ -77,13 +77,13 @@ project = TANCS5 AND created >= 2025-01-01 AND reporter in ("user@telechips.com"
 
 If the JQL is broad, still filter fetched results to `TANCS*` and `TMRCR` before reporting.
 
-**Reporter/Assignee correction audit:**
+**Reporter/Assignee TITAN linked-assignee audit candidates:**
 ```jql
-project = TITAN_Customer
-AND (reporter in ("titan") OR assignee in ("titan") OR assignee is EMPTY)
-AND created >= 2025-01-01
+reporter = "system.titan@telechips.com"
+AND assignee = "system.titan@telechips.com"
 ORDER BY created DESC
 ```
+Then open each candidate and keep only tickets with `Issue Links -> links to -> TITAN Issue: <key>`. Open the linked TITAN Issue and report only when its Assignee is `Unassigned` or one of the 9 China FAE members.
 
 ## REST API quick audit
 
@@ -103,15 +103,15 @@ summary,customfield_10684,customfield_15009,customfield_15044,customfield_15045,
 
 Authentication options: browser Console on `tcs.telechips.com`, PAT if supported, or a copied `JSESSIONID` Cookie header.
 
-For Reporter/Assignee correction audits, fetch:
+For Reporter/Assignee TITAN linked-assignee audits, fetch candidates with:
 
 ```text
 summary,reporter,assignee,created,issuelinks
 ```
 
-## Audit modes
+## Required audit workflow
 
-### Field completeness audit (recommended for auditing another person's tickets)
+### Field completeness audit (first required step)
 - Claude inspects tickets without modifying them.
 - Both Field tab and FAE tab fields are checked.
 - Field Tab Labels is ignored.
@@ -120,15 +120,14 @@ summary,reporter,assignee,created,issuelinks
 - Skip tickets outside customer scope or with no FAE tab.
 - Record ticket key plus all missing fields.
 
-### Reporter/Assignee correction audit
-- Claude inspects tickets without modifying them.
-- Use the reverse-filter JQL above to scan TANCS candidates.
-- Extract linked issue keys from both `outwardIssue` and `inwardIssue`; do not filter linked issue keys by prefix.
-- Fetch each linked issue with `GET /rest/api/2/issue/<linked-key>?fields=assignee,summary`.
-- Report only TANCS candidates whose linked issue Assignee username is one of the 9 China FAE members.
-- Put candidates with no Issue Links in an uncertain/manual-review section.
-- Skip candidates linked only to non-China-FAE assignees as out of China FAE scope.
-- Match usernames case-insensitively.
+### Reporter/Assignee TITAN linked-assignee audit
+- Run this after every field completeness audit as the second required step.
+- Candidate TCS ticket must have Reporter=TITAN and Assignee=TITAN.
+- Inspect the TCS issue page for `Issue Links -> links to -> TITAN Issue: <key>`.
+- Open each linked TITAN Issue and read its Assignee.
+- Report only when the linked TITAN Issue Assignee is `Unassigned` or one of the 9 China FAE members.
+- Skip headquarters AE/R&D or other non-China-FAE assignees.
+- Browser page/DOM inspection is allowed when REST/XML/export is blocked; do not read/export cookies.
 
 ### Edit/update (only for your own tickets or with explicit permission)
 - Claude modifies FAE tab fields only.
@@ -143,8 +142,7 @@ summary,reporter,assignee,created,issuelinks
 The audit report includes:
 - Summary counts
 - Per-ticket breakdown of missing fields (Field tab vs FAE tab)
-- Reporter/Assignee severity counts when that audit mode is used
-- For Mode B: in-scope China FAE tickets to fix, uncertain tickets with no Issue Links, and skipped out-of-scope summary/examples
+- Reporter/Assignee TITAN linked-assignee section every time, even when zero findings
 
 For management reports, put the compact table first:
 
